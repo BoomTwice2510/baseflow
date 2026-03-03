@@ -1,2 +1,2 @@
-echo node_modules> .gitignore
-echo .next>> .gitignore
+node_modules
+.next

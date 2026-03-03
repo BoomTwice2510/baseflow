@@ -1,142 +1,158 @@
 import { NextResponse } from "next/server";
 import { ethers } from "ethers";
 
-const BASE_RPC = process.env.BASE_RPC_URL || "https://base-rpc.publicnode.com";
+const BASE_RPC =
+  process.env.BASE_RPC_URL || "https://base-rpc.publicnode.com";
 const provider = new ethers.JsonRpcProvider(BASE_RPC);
 
-// Min ETH for volume anomaly
+// Min ETH for volume anomaly (real txs only)
 const MIN_VOLUME_ETH =
-  process.env.MIN_VOLUME_ETH ? Number(process.env.MIN_VOLUME_ETH) : 0.2;
+  process.env.MIN_VOLUME_ETH ? Number(process.env.MIN_VOLUME_ETH) : 0.05;
 
-// Uniswap v3 Mint/Burn event topics (signatures ke keccak256 hashes)
-// NOTE: Yeh illustrative hashes hain; agar baad me exact chahiye ho to
-// keccak256("Mint(address,address,int24,int24,uint128,uint256,uint256)")
-// aur keccak256("Burn(address,int24,int24,uint128,uint256,uint256)") se nikaal sakte ho.
-const MINT_TOPIC =
-  "0x0c396cd9891deb2c50f5c7be0b0b9fd379ffb410f42be9a27c237248cfad8c30";
-const BURN_TOPIC =
-  "0x0c396cd9891deb2c50f5c7be0b0b9fd379ffb410f42be9a27c237248cfad8c31";
-
-export async function GET() {
+export async function GET(request) {
   try {
-    const latestBlock = await provider.getBlockNumber();
+    const { searchParams } = new URL(request.url);
+    const watchAddress = searchParams.get("address") || null;
 
-    // Base block with txs for volume / deploy
+    const latestBlock = await provider.getBlockNumber();
     const block = await provider.getBlock(latestBlock, true);
 
     const signals = [];
+    const nowIso = new Date().toISOString();
 
-    // 1) Convert recent transactions → volume / deploy signals
+    // ---------- Real onchain tx → signals (no Uniswap heuristics) ----------
     if (block && Array.isArray(block.transactions)) {
-      const recentTxs = block.transactions.slice(-20); // last 20 txs of latest block
+      const recentTxs = block.transactions; // full block
 
       for (let i = 0; i < recentTxs.length; i++) {
         const tx = recentTxs[i];
 
-        // Volume anomaly: high-value tx
+        // 1) Volume anomaly: high-value native transfer
         if (tx.value && tx.value > ethers.parseEther(String(MIN_VOLUME_ETH))) {
           signals.push({
             id: `bf-vol-${latestBlock}-${i}`,
             type: "volume_anomaly",
             description:
-              "Unusual token transfer volume detected in a short time window",
+              "Unusual native token transfer volume detected in the latest block.",
             confidence: "low",
-            observed_at: new Date().toISOString(),
+            observed_at: nowIso,
             source: "onchain_scan",
-            note: "Early-stage volume observation. Needs confirmation."
+            note:
+              "Real onchain transfer above configured volume threshold. No trade advice.",
+            meta: {
+              from: tx.from,
+              to: tx.to,
+              value_eth: Number(ethers.formatEther(tx.value)),
+              tx_hash: tx.hash,
+              explorer_url: `https://basescan.org/tx/${tx.hash}`
+            }
           });
         }
 
-        // Contract deployment: to === null
+        // 2) Contract deployment
         if (tx.to === null) {
           signals.push({
             id: `bf-ctr-${latestBlock}-${i}`,
             type: "contract_deployment",
-            description: "New smart contract deployed on Base",
+            description: "New contract deployment detected in the latest block.",
             confidence: "low",
-            observed_at: new Date().toISOString(),
+            observed_at: nowIso,
             source: "onchain_scan",
-            note: "Raw deployment event. Contract not analyzed."
+            note: "Real deployment event from a Base transaction. Code not analyzed.",
+            meta: {
+              from: tx.from,
+              tx_hash: tx.hash,
+              explorer_url: `https://basescan.org/tx/${tx.hash}`
+            }
           });
+        }
+
+        // 3) Optional wallet‑specific activity
+        if (watchAddress) {
+          const addr = watchAddress.toLowerCase();
+          const fromMatch = tx.from && tx.from.toLowerCase() === addr;
+          const toMatch = tx.to && tx.to.toLowerCase() === addr;
+
+          if (fromMatch || toMatch) {
+            signals.push({
+              id: `bf-wallet-${latestBlock}-${i}`,
+              type: "wallet_activity",
+              description: `Activity detected for watched address ${watchAddress} in the latest block.`,
+              confidence: "medium",
+              observed_at: nowIso,
+              source: "address_watch",
+              note: fromMatch
+                ? "Outgoing transaction from watched wallet."
+                : "Incoming transaction to watched wallet.",
+              meta: {
+                from: tx.from,
+                to: tx.to,
+                value_eth: tx.value
+                  ? Number(ethers.formatEther(tx.value))
+                  : 0,
+                tx_hash: tx.hash,
+                explorer_url: `https://basescan.org/tx/${tx.hash}`
+              }
+            });
+          }
         }
       }
     }
 
-    // 2) Convert Uniswap v3 Mint/Burn events → liquidity_event signals
-    const RANGE = 50; // last 50 blocks
-    const fromBlock =
-      latestBlock - RANGE > 0 ? latestBlock - RANGE : latestBlock;
+    // ---------- Summary / fallback ----------
+    const fromBlock = latestBlock; // only latest block scanned for now
 
-    const filterMint = {
-      fromBlock,
-      toBlock: latestBlock,
-      topics: [MINT_TOPIC]
-    };
-
-    const filterBurn = {
-      fromBlock,
-      toBlock: latestBlock,
-      topics: [BURN_TOPIC]
-    };
-
-    let mintLogs = [];
-    let burnLogs = [];
-
-    try {
-      mintLogs = await provider.getLogs(filterMint);
-      burnLogs = await provider.getLogs(filterBurn);
-    } catch (logErr) {
-      console.error("Error fetching Uniswap v3 logs:", logErr);
-    }
-
-    // Mint → liquidity added signals
-    mintLogs.forEach((log, idx) => {
-      signals.push({
-        id: `bf-liq-mint-${log.blockNumber}-${idx}`,
-        type: "liquidity_event",
-        description: "Liquidity added to a Uniswap v3 pool on Base",
-        confidence: "low",
-        observed_at: new Date().toISOString(),
-        source: "onchain_scan",
-        note: "Raw Uniswap v3 Mint event. No trade advice."
-      });
-    });
-
-    // Burn → liquidity removed signals
-    burnLogs.forEach((log, idx) => {
-      signals.push({
-        id: `bf-liq-burn-${log.blockNumber}-${idx}`,
-        type: "liquidity_event",
-        description: "Liquidity removed from a Uniswap v3 pool on Base",
-        confidence: "low",
-        observed_at: new Date().toISOString(),
-        source: "onchain_scan",
-        note: "Raw Uniswap v3 Burn event. No trade advice."
-      });
-    });
-
-    // 3) Fallback: agar kuch bhi nahi mila, simple block_observation
     if (signals.length === 0) {
       signals.push({
         id: `bf-obs-${latestBlock}`,
         type: "block_observation",
-        description: `Watching Base block ${latestBlock}`,
+        description: `Watching Base block ${latestBlock}.`,
         confidence: "low",
-        observed_at: new Date().toISOString(),
+        observed_at: nowIso,
         source: "base_rpc",
-        note: "No notable Uniswap v3 or volume events detected recently."
+        note:
+          "No high-volume transfers, deployments, or watched wallet activity detected in this block.",
+        meta: {
+          searched_from_block: fromBlock,
+          searched_to_block: latestBlock,
+          min_volume_eth: MIN_VOLUME_ETH,
+          watch_address: watchAddress
+        }
+      });
+    } else {
+      signals.unshift({
+        id: `bf-summary-${latestBlock}`,
+        type: "summary",
+        description: `Summary of real onchain activity in Base block ${latestBlock}.`,
+        confidence: "low",
+        observed_at: nowIso,
+        source: "onchain_scan",
+        note:
+          "All signals are derived from real Base transactions in the latest block. No synthetic data.",
+        meta: {
+          total_signals: signals.length,
+          counts_by_type: signals.reduce((acc, s) => {
+            acc[s.type] = (acc[s.type] || 0) + 1;
+            return acc;
+          }, {}),
+          searched_from_block: fromBlock,
+          searched_to_block: latestBlock,
+          min_volume_eth: MIN_VOLUME_ETH,
+          watch_address: watchAddress
+        }
       });
     }
 
     return NextResponse.json({
       agent: "BaseFlow Signal Agent",
       chain: "Base",
-      updated_at: new Date().toISOString(),
+      updated_at: nowIso,
       latest_block: latestBlock,
       sample_block_hash: block && block.hash,
       min_volume_eth: MIN_VOLUME_ETH,
       searched_from_block: fromBlock,
       searched_to_block: latestBlock,
+      watch_address: watchAddress,
       signals
     });
   } catch (err) {

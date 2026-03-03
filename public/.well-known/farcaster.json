@@ -7,18 +7,18 @@
   "miniapp": {
     "id": "baseflow-signal-agent",
     "name": "BaseFlow Signal Agent",
-    "homeUrl": "https://baseflow-agent-main.vercel.app",
-    "iconUrl": "https://baseflow-agent-main.vercel.app/icon.png",
-    "splashImageUrl": "https://baseflow-agent-main.vercel.app/hero.png",
+    "homeUrl": "https://baseflo.vercel.app",
+    "iconUrl": "https://baseflo.vercel.app/hero.png",
+    "splashImageUrl": "https://baseflo.vercel.app/hero.png",
     "splashBackgroundColor": "#050816",
     "primaryCategory": "finance",
     "tags": ["signals", "defi", "analytics"],
     "tagline": "Onchain signals on Base.",
     "shortDescription": "Uniswap v3 & volume signals.",
     "promoText": "Lightweight onchain signal agent for Base, optimized for mini app surfaces.",
-    "heroImageUrl": "https://baseflow-agent-main.vercel.app/hero.png",
+    "heroImageUrl": "https://baseflo.vercel.app/hero.png",
     "ogTitle": "BaseFlow Signal Agent",
     "ogDescription": "Live Uniswap v3 and volume signals on Base.",
-    "ogImageUrl": "https://baseflow-agent-main.vercel.app/hero.png"
+    "ogImageUrl": "https://baseflo.vercel.app/hero.png"
   }
 }

@@ -15,7 +15,9 @@ export const metadata: Metadata = {
     images: ["/hero.png"]
   },
   other: {
-    "base:app_id": "699b5910eb8da8c3b3d7b15c"
+    "base:app_id": "699b5910eb8da8c3b3d7b15c",
+    "fc:miniapp": '{"version":"1","imageUrl":"https://baseflo.vercel.app/hero.png","button":{"title":"Open Agent","action":{"type":"launch_miniapp"}}}',
+    "fc:frame": '{"version":"1","imageUrl":"https://baseflo.vercel.app/hero.png","button":{"title":"Open Agent","action":{"type":"launch_frame"}}}'
   }
 };
 

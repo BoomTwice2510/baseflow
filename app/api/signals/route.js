@@ -1,166 +1,297 @@
+// app/api/signals/route.js
+
 import { NextResponse } from "next/server";
-import { ethers } from "ethers";
+import { JsonRpcProvider, formatEther } from "ethers";
 
-const BASE_RPC =
-  process.env.BASE_RPC_URL || "https://base-rpc.publicnode.com";
-const provider = new ethers.JsonRpcProvider(BASE_RPC);
+// === PROVIDER SETUP ===
+const PROVIDER_URL =
+  process.env.BASE_RPC_URL || "https://mainnet.base.org";
 
-// Min ETH for volume anomaly (real txs only)
-const MIN_VOLUME_ETH =
-  process.env.MIN_VOLUME_ETH ? Number(process.env.MIN_VOLUME_ETH) : 0.05;
+const provider = new JsonRpcProvider(PROVIDER_URL);
 
-export async function GET(request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const watchAddress = searchParams.get("address") || null;
+// === AGENT / ERC‑8004 META ===
+const AGENT_WALLET = "0x0A06A1082EFC81a01bb5f7F3593aa937d8c7e79f";
+const AGENT_8004_URL = "https://www.8004scan.io/agents/base/2387";
+const AGENT_8004_ID = 2387;
 
-    const latestBlock = await provider.getBlockNumber();
-    const block = await provider.getBlock(latestBlock, true);
+// === CONFIG ===
+const LOOKBACK_BLOCKS = 40; // wallet + active tokens + deploys window
 
-    const signals = [];
-    const nowIso = new Date().toISOString();
+// === HELPERS ===
 
-    // ---------- Real onchain tx → signals (no Uniswap heuristics) ----------
-    if (block && Array.isArray(block.transactions)) {
-      const recentTxs = block.transactions; // full block
+// Ethers v6: getBlock(number, includeTransactions = true)
+async function getBlocksWithTx(fromBlock, toBlock) {
+  const blockPromises = [];
+  for (let i = fromBlock; i <= toBlock; i++) {
+    blockPromises.push(provider.getBlock(i, true));
+  }
+  return Promise.all(blockPromises);
+}
 
-      for (let i = 0; i < recentTxs.length; i++) {
-        const tx = recentTxs[i];
+// Wallet overview + risk v2
+async function buildWalletOverview(address, latestBlock) {
+  const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
+  const blocks = await getBlocksWithTx(fromBlock, latestBlock);
 
-        // 1) Volume anomaly: high-value native transfer
-        if (tx.value && tx.value > ethers.parseEther(String(MIN_VOLUME_ETH))) {
-          signals.push({
-            id: `bf-vol-${latestBlock}-${i}`,
-            type: "volume_anomaly",
-            description:
-              "Unusual native token transfer volume detected in the latest block.",
-            confidence: "low",
-            observed_at: nowIso,
-            source: "onchain_scan",
-            note:
-              "Real onchain transfer above configured volume threshold. No trade advice.",
-            meta: {
-              from: tx.from,
-              to: tx.to,
-              value_eth: Number(ethers.formatEther(tx.value)),
-              tx_hash: tx.hash,
-              explorer_url: `https://basescan.org/tx/${tx.hash}`
-            }
-          });
-        }
+  let txCount = 0;
+  let volumeIn = 0;
+  let volumeOut = 0;
+  const tokens = new Set();
 
-        // 2) Contract deployment
-        if (tx.to === null) {
-          signals.push({
-            id: `bf-ctr-${latestBlock}-${i}`,
-            type: "contract_deployment",
-            description: "New contract deployment detected in the latest block.",
-            confidence: "low",
-            observed_at: nowIso,
-            source: "onchain_scan",
-            note: "Real deployment event from a Base transaction. Code not analyzed.",
-            meta: {
-              from: tx.from,
-              tx_hash: tx.hash,
-              explorer_url: `https://basescan.org/tx/${tx.hash}`
-            }
-          });
-        }
+  // extra patterns
+  let selfTransfers = 0;
+  let largestSingleTx = 0;
 
-        // 3) Optional wallet‑specific activity
-        if (watchAddress) {
-          const addr = watchAddress.toLowerCase();
-          const fromMatch = tx.from && tx.from.toLowerCase() === addr;
-          const toMatch = tx.to && tx.to.toLowerCase() === addr;
+  for (const block of blocks) {
+    if (!block || !block.transactions) continue;
 
-          if (fromMatch || toMatch) {
-            signals.push({
-              id: `bf-wallet-${latestBlock}-${i}`,
-              type: "wallet_activity",
-              description: `Activity detected for watched address ${watchAddress} in the latest block.`,
-              confidence: "medium",
-              observed_at: nowIso,
-              source: "address_watch",
-              note: fromMatch
-                ? "Outgoing transaction from watched wallet."
-                : "Incoming transaction to watched wallet.",
-              meta: {
-                from: tx.from,
-                to: tx.to,
-                value_eth: tx.value
-                  ? Number(ethers.formatEther(tx.value))
-                  : 0,
-                tx_hash: tx.hash,
-                explorer_url: `https://basescan.org/tx/${tx.hash}`
-              }
-            });
-          }
-        }
+    for (const tx of block.transactions) {
+      const from = tx.from?.toLowerCase();
+      const to = tx.to?.toLowerCase();
+
+      if (from !== address && to !== address) continue;
+
+      txCount++;
+
+      const ethValue = tx.value ? Number(formatEther(tx.value)) : 0;
+      if (to === address) volumeIn += ethValue;
+      if (from === address) volumeOut += ethValue;
+
+      if (ethValue > largestSingleTx) largestSingleTx = ethValue;
+      if (from === address && to === address) selfTransfers++;
+
+      if (tx.data && tx.data.startsWith("0xa9059cbb") && tx.to) {
+        tokens.add(tx.to.toLowerCase());
       }
     }
+  }
 
-    // ---------- Summary / fallback ----------
-    const fromBlock = latestBlock; // only latest block scanned for now
+  const totalVolume = volumeIn + volumeOut;
+  let score = 0;
 
-    if (signals.length === 0) {
-      signals.push({
-        id: `bf-obs-${latestBlock}`,
-        type: "block_observation",
-        description: `Watching Base block ${latestBlock}.`,
-        confidence: "low",
-        observed_at: nowIso,
-        source: "base_rpc",
-        note:
-          "No high-volume transfers, deployments, or watched wallet activity detected in this block.",
-        meta: {
-          searched_from_block: fromBlock,
-          searched_to_block: latestBlock,
-          min_volume_eth: MIN_VOLUME_ETH,
-          watch_address: watchAddress
-        }
-      });
-    } else {
-      signals.unshift({
-        id: `bf-summary-${latestBlock}`,
-        type: "summary",
-        description: `Summary of real onchain activity in Base block ${latestBlock}.`,
-        confidence: "low",
-        observed_at: nowIso,
-        source: "onchain_scan",
-        note:
-          "All signals are derived from real Base transactions in the latest block. No synthetic data.",
-        meta: {
-          total_signals: signals.length,
-          counts_by_type: signals.reduce((acc, s) => {
-            acc[s.type] = (acc[s.type] || 0) + 1;
-            return acc;
-          }, {}),
-          searched_from_block: fromBlock,
-          searched_to_block: latestBlock,
-          min_volume_eth: MIN_VOLUME_ETH,
-          watch_address: watchAddress
-        }
+  // tx count contribution (0–30)
+  if (txCount > 0) {
+    const txNorm = Math.min(txCount / 20, 1);
+    score += txNorm * 30;
+  }
+
+  // volume contribution (0–30)
+  if (totalVolume > 0) {
+    const volNorm = Math.min(totalVolume / 5, 1); // 5+ ETH => max
+    score += volNorm * 30;
+  }
+
+  // token diversity contribution (0–20)
+  if (tokens.size > 0) {
+    const tokNorm = Math.min(tokens.size / 10, 1);
+    score += tokNorm * 20;
+  }
+
+  // largest single tx (0–10)
+  if (largestSingleTx > 0) {
+    const bigNorm = Math.min(largestSingleTx / 1, 1); // 1+ ETH
+    score += bigNorm * 10;
+  }
+
+  // self‑transfer weirdness (small boost)
+  if (selfTransfers > 0) {
+    const selfNorm = Math.min(selfTransfers / 5, 1);
+    score += selfNorm * 10;
+  }
+
+  const riskScore = Math.max(0, Math.min(100, Math.round(score)));
+
+  return [
+    {
+      id: `wallet-overview-${address}-${latestBlock}`,
+      type: "wallet_overview",
+      category: "liq",
+      description: `Wallet activity on Base (last ${LOOKBACK_BLOCKS} blocks).`,
+      source: "base_rpc",
+      observed_at: new Date().toISOString(),
+      confidence: "medium",
+      meta: {
+        address,
+        lookback_blocks: LOOKBACK_BLOCKS,
+        tx_count: txCount,
+        volume_in_eth: Number(volumeIn.toFixed(4)),
+        volume_out_eth: Number(volumeOut.toFixed(4)),
+        unique_tokens_transfer: tokens.size,
+        largest_single_tx_eth: Number(largestSingleTx.toFixed(4)),
+        self_transfers: selfTransfers,
+        risk_score: riskScore,
+        agent_wallet: AGENT_WALLET,
+        agent_8004_id: AGENT_8004_ID
+      }
+    }
+  ];
+}
+
+// Active tokens detector (simple, not USD‑based)
+async function buildActiveTokenSignals(latestBlock) {
+  const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
+  const blocks = await getBlocksWithTx(fromBlock, latestBlock);
+
+  const transferSelector = "0xa9059cbb";
+  const tokenCounts = new Map();
+
+  for (const block of blocks) {
+    if (!block || !block.transactions) continue;
+
+    for (const tx of block.transactions) {
+      if (!tx.to || !tx.data) continue;
+      if (!tx.data.startsWith(transferSelector)) continue;
+
+      const token = tx.to.toLowerCase();
+      tokenCounts.set(token, (tokenCounts.get(token) || 0) + 1);
+    }
+  }
+
+  const sorted = Array.from(tokenCounts.entries()).sort(
+    (a, b) => b[1] - a[1]
+  );
+
+  const top = sorted.slice(0, 3);
+
+  return top.map(([token, count], idx) => ({
+    id: `active-token-${latestBlock}-${idx}`,
+    type: "active_token",
+    category: "vol",
+    description: `Active token detected: ${token} (${count} transfers in last ${LOOKBACK_BLOCKS} blocks).`,
+    source: "base_rpc",
+    observed_at: new Date().toISOString(),
+    confidence: count >= 5 ? "medium" : "low",
+    meta: {
+      token_address: token,
+      transfer_count: count,
+      rank: idx + 1,
+      lookback_blocks: LOOKBACK_BLOCKS,
+      agent_wallet: AGENT_WALLET,
+      agent_8004_id: AGENT_8004_ID
+    }
+  }));
+}
+
+// New contract deployments
+async function buildNewContractSignals(latestBlock) {
+  const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
+  const blocks = await getBlocksWithTx(fromBlock, latestBlock);
+
+  const deploys = [];
+
+  for (const block of blocks) {
+    if (!block || !block.transactions) continue;
+
+    for (const tx of block.transactions) {
+      if (tx.to !== null) continue; // contract deployment in EVM: to == null
+
+      const from = tx.from?.toLowerCase();
+      deploys.push({
+        from,
+        hash: tx.hash,
+        blockNumber: block.number
       });
     }
+  }
+
+  return deploys.map((d, idx) => ({
+    id: `deploy-${d.blockNumber}-${idx}`,
+    type: "contract_deployment",
+    category: "deploy",
+    description: `New contract deployment tx ${d.hash.slice(
+      0,
+      10
+    )}… in last ${LOOKBACK_BLOCKS} blocks.`,
+    source: "base_rpc",
+    observed_at: new Date().toISOString(),
+    confidence: "low",
+    meta: {
+      from: d.from,
+      tx_hash: d.hash,
+      block_number: d.blockNumber,
+      basescan_tx_url: `https://basescan.org/tx/${d.hash}`,
+      lookback_blocks: LOOKBACK_BLOCKS,
+      agent_wallet: AGENT_WALLET,
+      agent_8004_id: AGENT_8004_ID
+    }
+  }));
+}
+
+// Simple block observation fallback
+function buildBlockObservation(latestBlock) {
+  return {
+    id: `bf-obs-${latestBlock}`,
+    type: "block_observation",
+    category: "block",
+    description: `Watching Base block ${latestBlock}.`,
+    confidence: "low",
+    observed_at: new Date().toISOString(),
+    source: "base_rpc",
+    note:
+      "No specific wallet or token events highlighted in the current lookback window.",
+    meta: {
+      searched_from_block: Math.max(0, latestBlock - LOOKBACK_BLOCKS),
+      searched_to_block: latestBlock,
+      lookback_blocks: LOOKBACK_BLOCKS,
+      agent_wallet: AGENT_WALLET,
+      agent_8004_id: AGENT_8004_ID
+    }
+  };
+}
+
+// === MAIN HANDLER ===
+
+export async function GET(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const addressParam = searchParams.get("address");
+    const address = addressParam ? addressParam.toLowerCase() : null;
+
+    const latestBlock = await provider.getBlockNumber();
+
+    const signals = [];
+
+    // Wallet overview if address given
+    if (address) {
+      const walletSignals = await buildWalletOverview(address, latestBlock);
+      signals.push(...walletSignals);
+    }
+
+    // Active tokens + new deploys (always)
+    const [activeTokens, newDeploys] = await Promise.all([
+      buildActiveTokenSignals(latestBlock),
+      buildNewContractSignals(latestBlock)
+    ]);
+    signals.push(...activeTokens, ...newDeploys);
+
+    // Fallback block observation (always add one)
+    signals.push(buildBlockObservation(latestBlock));
 
     return NextResponse.json({
       agent: "BaseFlow Signal Agent",
       chain: "Base",
-      updated_at: nowIso,
       latest_block: latestBlock,
-      sample_block_hash: block && block.hash,
-      min_volume_eth: MIN_VOLUME_ETH,
-      searched_from_block: fromBlock,
-      searched_to_block: latestBlock,
-      watch_address: watchAddress,
+      updated_at: new Date().toISOString(),
+      erc8004: {
+        network: "base",
+        agent_id: AGENT_8004_ID,
+        agent_wallet: AGENT_WALLET,
+        explorer_url: AGENT_8004_URL
+      },
       signals
     });
   } catch (err) {
-    console.error("Signal agent error:", err && err.message ? err.message : err);
+    console.error("Signal agent error", err);
     return NextResponse.json(
       {
-        error: "Failed to fetch Base data",
-        detail: err && err.message ? err.message : "Unknown error"
+        error: "BaseFlow Signal Agent failed",
+        message: err?.message || "unknown error",
+        erc8004: {
+          network: "base",
+          agent_id: AGENT_8004_ID,
+          agent_wallet: AGENT_WALLET,
+          explorer_url: AGENT_8004_URL
+        }
       },
       { status: 500 }
     );

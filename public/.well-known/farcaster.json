@@ -1,9 +1,10 @@
 {
   "accountAssociation": {
-    "header": "",
-    "payload": "",
-    "signature": ""
+    "header": "eyJmaWQiOjMwNzMzMCwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEIwMzJkM2MzQTc2ZjYyMTZGODRDOUZDNzQzNjQyNjU1QzllMDE3ZjkifQ",
+    "payload": "eyJkb21haW4iOiJiYXNlZmxvLnZlcmNlbC5hcHAifQ",
+    "signature": "eC6hUUV6kyd7XU5ncmGZ65ZS3D9qS6Zo0M5anmp94LhzFo9DO6didvfYe8MYoLdKHv3r+ii4K/1/p63QJBPl3Rs="
   },
+  
   "miniapp": {
     "id": "baseflow-signal-agent",
     "name": "BaseFlow Signal Agent",
@@ -12,13 +13,13 @@
     "splashImageUrl": "https://baseflo.vercel.app/hero.png",
     "splashBackgroundColor": "#050816",
     "primaryCategory": "finance",
-    "tags": ["signals", "defi", "analytics"],
+    "tags": ["signals", "defi", "analytics", "erc8004"],
     "tagline": "Onchain signals on Base.",
-    "shortDescription": "Uniswap v3 & volume signals.",
-    "promoText": "Lightweight onchain signal agent for Base, optimized for mini app surfaces.",
+    "shortDescription": "Blocks, active tokens, new contracts, and wallet risk on Base.",
+    "promoText": "Lightweight onchain signal agent for Base, optimized for mini app and Frames surfaces.",
     "heroImageUrl": "https://baseflo.vercel.app/hero.png",
     "ogTitle": "BaseFlow Signal Agent",
-    "ogDescription": "Live Uniswap v3 and volume signals on Base.",
+    "ogDescription": "Live Base block activity, active tokens, new contracts, and wallet risk overview.",
     "ogImageUrl": "https://baseflo.vercel.app/hero.png"
   }
 }

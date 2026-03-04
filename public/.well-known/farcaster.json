@@ -27,6 +27,7 @@
     "ogTitle": "BaseFlow Signal Agent",
     "ogDescription": "Live Base block activity, active tokens, new contracts, and wallet risk overview.",
     "ogImageUrl": "https://baseflo.vercel.app/hero.png",
-    "castShareUrl": "https://baseflo.vercel.app"
+    "castShareUrl": "https://baseflo.vercel.app",
+    "noindex": false
   }
 }

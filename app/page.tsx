@@ -86,12 +86,16 @@ export default function HomePage() {
 
   const signals: Signal[] = data?.signals || [];
 
+  const walletOverview = signals.find((s) => s.type === "wallet_overview");
+
   const sortedSignals = [...signals].sort(
     (a, b) =>
       new Date(b.observed_at).getTime() - new Date(a.observed_at).getTime()
   );
 
-  const filteredSignals = sortedSignals.filter((s) => {
+  const filteredSignalsRaw = sortedSignals.filter((s) => {
+    if (s.type === "wallet_overview") return false;
+
     if (activeTab === "all") return true;
 
     const cat = s.category || "";
@@ -103,6 +107,18 @@ export default function HomePage() {
 
     return true;
   });
+
+  const filteredSignals = filteredSignalsRaw;
+
+  const recent = sortedSignals
+    .filter(
+      (s) =>
+        s.type === "dex_swap" ||
+        s.type === "contract_deployment" ||
+        s.type === "token_deploy" ||
+        s.type === "liquidity_migration"
+    )
+    .slice(0, 6);
 
   const stats = {
     total: signals.length,
@@ -116,23 +132,23 @@ export default function HomePage() {
   }
 
   return (
-  <div
-    style={{
-      width: "100vw",
-      maxWidth: 430,
-      minHeight: "100vh",
-      padding: 16,
-      fontFamily: "system-ui",
-      background:
-        "radial-gradient(circle at top, #020617 0, #00010a 30%, #020617 80%)",
-      color: "#f9fafb",
-      position: "relative",
-      overflow: "hidden",
-      boxShadow: "0 24px 60px rgba(0,0,0,0.9)",
-      borderRadius: 24
-    }}
+    <div
+      style={{
+        width: "100vw",
+        maxWidth: 430,
+        minHeight: "100vh",
+        padding: 16,
+        fontFamily: "system-ui",
+        background:
+          "radial-gradient(circle at top, #020617 0, #00010a 30%, #020617 80%)",
+        color: "#f9fafb",
+        position: "relative",
+        overflow: "hidden",
+        boxShadow: "0 24px 60px rgba(0,0,0,0.9)",
+        borderRadius: 24
+      }}
     >
-      {/* subtle animated glow background */}
+      {/* subtle glow background */}
       <div
         style={{
           position: "absolute",
@@ -275,7 +291,7 @@ export default function HomePage() {
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: 10,
-            marginBottom: 14,
+            marginBottom: 12,
             fontSize: 11
           }}
         >
@@ -289,34 +305,45 @@ export default function HomePage() {
               borderRadius: 14,
               border: "1px solid rgba(148,163,184,.2)",
               overflow: "hidden",
-              boxShadow: "0 10px 30px rgba(15,23,42,0.75)",
-              transform: "translateY(0)",
-              transition:
-                "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease"
+              boxShadow: "0 10px 30px rgba(15,23,42,0.75)"
             }}
           >
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Live Blocks</div>
-
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco"
+                fontWeight: 600,
+                marginBottom: 6,
+                position: "relative",
+                display: "inline-block"
               }}
             >
-              {data?.live_feed?.latest_blocks?.map((b: number) => (
-                <div
-                  key={b}
-                  style={{
-                    fontSize: 11,
-                    opacity: 0.9
-                  }}
-                >
-                  #{b}
-                </div>
-              ))}
+              <span
+                style={{
+                  position: "absolute",
+                  inset: -6,
+                  borderRadius: 999,
+                  background:
+                    "radial-gradient(circle, rgba(56,189,248,.5), transparent 60%)",
+                  opacity: 0.25,
+                  filter: "blur(6px)",
+                  animation: "pulseGlow 2s ease-in-out infinite",
+                  pointerEvents: "none"
+                }}
+              />
+              <span style={{ position: "relative" }}>Live Blocks</span>
             </div>
+
+            {data?.live_feed?.latest_blocks?.map((b: number) => (
+              <div
+                key={b}
+                style={{
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco",
+                  fontSize: 11,
+                  opacity: 0.9
+                }}
+              >
+                #{b}
+              </div>
+            ))}
           </div>
 
           {/* ACTIVE TOKENS */}
@@ -329,14 +356,31 @@ export default function HomePage() {
               borderRadius: 14,
               border: "1px solid rgba(148,163,184,.2)",
               overflow: "hidden",
-              boxShadow: "0 10px 30px rgba(15,23,42,0.75)",
-              transform: "translateY(0)",
-              transition:
-                "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease"
+              boxShadow: "0 10px 30px rgba(15,23,42,0.75)"
             }}
           >
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              Active Tokens
+            <div
+              style={{
+                fontWeight: 600,
+                marginBottom: 6,
+                position: "relative",
+                display: "inline-block"
+              }}
+            >
+              <span
+                style={{
+                  position: "absolute",
+                  inset: -6,
+                  borderRadius: 999,
+                  background:
+                    "radial-gradient(circle, rgba(96,165,250,.5), transparent 60%)",
+                  opacity: 0.25,
+                  filter: "blur(6px)",
+                  animation: "pulseGlow 2.3s ease-in-out infinite",
+                  pointerEvents: "none"
+                }}
+              />
+              <span style={{ position: "relative" }}>Active Tokens</span>
             </div>
 
             {(!data?.top_tokens || data.top_tokens.length === 0) && (
@@ -358,6 +402,59 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+
+        {/* RECENT ACTIVITY STRIP */}
+        {recent.length > 0 && (
+          <section
+            style={{
+              marginBottom: 12,
+              fontSize: 11,
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch"
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                paddingBottom: 4,
+                minWidth: "100%"
+              }}
+            >
+              {recent.map((s) => (
+                <div
+                  key={s.id}
+                  style={{
+                    minWidth: 140,
+                    padding: "6px 8px",
+                    borderRadius: 999,
+                    background:
+                      s.type === "dex_swap"
+                        ? "linear-gradient(135deg,rgba(59,130,246,.3),rgba(56,189,248,.2))"
+                        : s.type === "contract_deployment"
+                        ? "linear-gradient(135deg,rgba(168,85,247,.35),rgba(59,130,246,.25))"
+                        : "linear-gradient(135deg,rgba(34,197,94,.35),rgba(16,185,129,.25))",
+                    border: "1px solid rgba(148,163,184,.35)",
+                    boxShadow: "0 8px 20px rgba(15,23,42,0.7)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
+                  }}
+                >
+                  <div style={{ fontSize: 10, opacity: 0.8 }}>
+                    {TYPE_LABELS[s.type] || s.type}
+                  </div>
+                  <div style={{ fontSize: 11 }}>
+                    {s.type === "dex_swap" && "DEX swap"}
+                    {s.type === "contract_deployment" && "New contract"}
+                    {s.type === "token_deploy" && "Token launch"}
+                    {s.type === "liquidity_migration" && "Liquidity move"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* STATS */}
         <section
@@ -457,6 +554,35 @@ export default function HomePage() {
             </button>
           </div>
         </section>
+
+        {/* WALLET SNAPSHOT */}
+        {walletOverview && (
+          <section
+            style={{
+              marginBottom: 12,
+              padding: 12,
+              borderRadius: 14,
+              background:
+                "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(59,130,246,0.65))",
+              border: "1px solid rgba(129,140,248,.7)",
+              boxShadow: "0 12px 30px rgba(15,23,42,0.9)",
+              fontSize: 11
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+              Wallet Snapshot
+            </div>
+            <div style={{ fontSize: 11, opacity: 0.9 }}>
+              Tx: {walletOverview.meta?.tx_count} · In:{" "}
+              {walletOverview.meta?.volume_in_eth} ETH · Out:{" "}
+              {walletOverview.meta?.volume_out_eth} ETH
+            </div>
+            <div style={{ fontSize: 11, marginTop: 4 }}>
+              Class: <strong>{walletOverview.meta?.wallet_class}</strong> ·
+              Tokens: {walletOverview.meta?.unique_tokens_transfer}
+            </div>
+          </section>
+        )}
 
         {/* SMART WALLET TRACKER PANEL */}
         <section
@@ -579,21 +705,22 @@ export default function HomePage() {
                     transition:
                       "transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease"
                   }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = "translateY(-3px)";
+                    el.style.boxShadow =
+                      "0 18px 40px rgba(15,23,42,1)";
+                    el.style.borderColor = "rgba(96,165,250,.8)";
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = "translateY(0)";
+                    el.style.boxShadow =
+                      "0 14px 36px rgba(15,23,42,0.9)";
+                    el.style.borderColor =
+                      "rgba(148,163,184,.5)";
+                  }}
                 >
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      borderRadius: 14,
-                      border: "1px solid transparent",
-                      background:
-                        "radial-gradient(circle at 0 0, rgba(59,130,246,.35), transparent 55%)",
-                      opacity: 0,
-                      pointerEvents: "none",
-                      transition: "opacity 0.18s ease"
-                    }}
-                  />
-
                   <div
                     style={{
                       display: "flex",
@@ -618,20 +745,6 @@ export default function HomePage() {
                     {s.description}
                   </div>
 
-                  {/* Extra meta sections */}
-                  {s.type === "wallet_overview" && (
-                    <div style={{ fontSize: 11, marginTop: 4 }}>
-                      <div>Tx: {m.tx_count}</div>
-                      <div>
-                        In: {m.volume_in_eth} ETH · Out: {m.volume_out_eth} ETH
-                      </div>
-                      <div>
-                        Tokens: {m.unique_tokens_transfer} · Class:{" "}
-                        {m.wallet_class}
-                      </div>
-                    </div>
-                  )}
-
                   {s.type === "liquidity_migration" && m.eth_value && (
                     <div style={{ fontSize: 11, marginTop: 4 }}>
                       Size: {m.eth_value} ETH
@@ -650,7 +763,10 @@ export default function HomePage() {
                       <a
                         href={`https://basescan.org/tx/${m.tx_hash}`}
                         target="_blank"
-                        style={{ color: "#60a5fa", textDecoration: "none" }}
+                        style={{
+                          color: "#60a5fa",
+                          textDecoration: "none"
+                        }}
                       >
                         view tx
                       </a>

@@ -15,7 +15,7 @@ const AGENT_8004_URL = "https://www.8004scan.io/agents/base/2387";
 const AGENT_8004_ID = 2387;
 
 // === CONFIG ===
-const LOOKBACK_BLOCKS = 6;
+const LOOKBACK_BLOCKS = 20;
 const WHALE_THRESHOLD_USD = 100000;
 const LIQUIDITY_MOVE_ETH = 10;
 
@@ -35,7 +35,6 @@ let lastPriceFetch = 0;
 
 // ETH price
 async function getETHPrice() {
-
   const now = Date.now();
 
   if (cachedETHPrice && now - lastPriceFetch < 60000) {
@@ -43,7 +42,6 @@ async function getETHPrice() {
   }
 
   try {
-
     const res = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
     );
@@ -54,43 +52,34 @@ async function getETHPrice() {
     lastPriceFetch = now;
 
     return cachedETHPrice;
-
   } catch {
-
     return 3000;
-
   }
-
 }
 
 // cached block loader
 async function getBlocksWithTx(fromBlock, toBlock) {
-
   const blocks = [];
 
   for (let i = fromBlock; i <= toBlock; i++) {
-
     if (cachedBlocks.has(i)) {
       blocks.push(cachedBlocks.get(i));
       continue;
     }
 
-    const block = await provider.getBlock(i);
+    const block = await provider.getBlock(i, true);
 
     cachedBlocks.set(i, block);
 
     blocks.push(block);
-
   }
 
   return blocks;
-
 }
 
 // === WALLET CLASSIFIER ===
 
 function classifyWallet(txCount, volumeEth, tokenCount) {
-
   if (volumeEth > 100 && txCount > 30 && tokenCount > 5)
     return "smart_money";
 
@@ -104,13 +93,11 @@ function classifyWallet(txCount, volumeEth, tokenCount) {
     return "retail";
 
   return "low_activity";
-
 }
 
 // === WALLET OVERVIEW ===
 
 async function buildWalletOverview(address, latestBlock) {
-
   const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
 
   const blocks = await getBlocksWithTx(fromBlock, latestBlock);
@@ -125,11 +112,9 @@ async function buildWalletOverview(address, latestBlock) {
   let largestSingleTx = 0;
 
   for (const block of blocks) {
-
     if (!block?.transactions) continue;
 
     for (const tx of block.transactions) {
-
       const from = tx.from?.toLowerCase();
       const to = tx.to?.toLowerCase();
 
@@ -149,9 +134,7 @@ async function buildWalletOverview(address, latestBlock) {
       if (tx.data && tx.data.startsWith("0xa9059cbb") && tx.to) {
         tokens.add(tx.to.toLowerCase());
       }
-
     }
-
   }
 
   const totalVolume = volumeIn + volumeOut;
@@ -159,7 +142,6 @@ async function buildWalletOverview(address, latestBlock) {
   const walletClass = classifyWallet(txCount, totalVolume, tokens.size);
 
   const signals = [
-
     {
       id: `wallet-overview-${address}-${latestBlock}`,
       type: "wallet_overview",
@@ -179,46 +161,32 @@ async function buildWalletOverview(address, latestBlock) {
         agent_wallet: AGENT_WALLET
       }
     }
-
   ];
 
   if (walletClass === "smart_money") {
-
     signals.push({
-
-      id:`smart-wallet-${address}`,
-
-      type:"smart_money_wallet",
-
-      category:"smart_money",
-
-      description:"Smart money wallet candidate detected",
-
-      confidence:"high",
-
-      observed_at:new Date().toISOString(),
-
-      source:"base_rpc",
-
-      meta:{
-        wallet:address,
-        tx_count:txCount,
-        volume_eth:totalVolume,
-        token_diversity:tokens.size
+      id: `smart-wallet-${address}`,
+      type: "smart_money_wallet",
+      category: "smart_money",
+      description: "Smart money wallet candidate detected",
+      confidence: "high",
+      observed_at: new Date().toISOString(),
+      source: "base_rpc",
+      meta: {
+        wallet: address,
+        tx_count: txCount,
+        volume_eth: totalVolume,
+        token_diversity: tokens.size
       }
-
     });
-
   }
 
   return signals;
-
 }
 
 // === ACTIVE TOKEN DETECTOR WITH MOMENTUM ===
 
 async function buildActiveTokenSignals(latestBlock) {
-
   const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
 
   const blocks = await getBlocksWithTx(fromBlock, latestBlock);
@@ -226,11 +194,9 @@ async function buildActiveTokenSignals(latestBlock) {
   const tokenCounts = new Map();
 
   for (const block of blocks) {
-
     if (!block?.transactions) continue;
 
     for (const tx of block.transactions) {
-
       if (!tx.data || !tx.to) continue;
 
       if (!tx.data.startsWith("0xa9059cbb")) continue;
@@ -238,56 +204,40 @@ async function buildActiveTokenSignals(latestBlock) {
       const token = tx.to.toLowerCase();
 
       tokenCounts.set(token, (tokenCounts.get(token) || 0) + 1);
-
     }
-
   }
 
-  const sorted = [...tokenCounts.entries()].sort((a,b)=>b[1]-a[1]);
+  const sorted = [...tokenCounts.entries()].sort((a, b) => b[1] - a[1]);
 
-  const top = sorted.slice(0,3);
+  const top = sorted.slice(0, 3);
 
-  return top.map(([token,count],idx)=>{
-
+  return top.map(([token, count], idx) => {
     let pumpSignal = null;
 
-    if(count > 20) pumpSignal = "high_momentum";
-    else if(count > 10) pumpSignal = "medium_momentum";
+    if (count > 20) pumpSignal = "high_momentum";
+    else if (count > 10) pumpSignal = "medium_momentum";
 
     return {
-
-      id:`active-token-${latestBlock}-${idx}`,
-
-      type:"active_token",
-
-      category:"momentum",
-
-      description:`Active token detected`,
-
-      source:"base_rpc",
-
-      observed_at:new Date().toISOString(),
-
-      confidence: count>=5?"medium":"low",
-
-      pump_signal:pumpSignal,
-
-      meta:{
-        token_address:token,
-        transfer_count:count,
-        rank:idx+1
+      id: `active-token-${latestBlock}-${idx}`,
+      type: "active_token",
+      category: "momentum",
+      description: `Active token detected`,
+      source: "base_rpc",
+      observed_at: new Date().toISOString(),
+      confidence: count >= 5 ? "medium" : "low",
+      pump_signal: pumpSignal,
+      meta: {
+        token_address: token,
+        transfer_count: count,
+        rank: idx + 1
       }
-
-    }
-
+    };
   });
-
 }
 
 // === WHALE DETECTION ===
 
 async function buildWhaleSignals(latestBlock) {
-
   const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
 
   const blocks = await getBlocksWithTx(fromBlock, latestBlock);
@@ -297,411 +247,294 @@ async function buildWhaleSignals(latestBlock) {
   const signals = [];
 
   for (const block of blocks) {
-
     if (!block?.transactions) continue;
 
     for (const tx of block.transactions) {
-
       const eth = tx.value ? Number(formatEther(tx.value)) : 0;
 
       const usd = eth * ethPrice;
 
       if (usd > WHALE_THRESHOLD_USD) {
-
         signals.push({
-
-          id:`whale-${tx.hash.slice(0,10)}`,
-
-          type:"whale_transfer",
-
-          category:"whale",
-
-          description:`Large transfer ~$${Math.round(usd)}`,
-
-          source:"base_rpc",
-
-          observed_at:new Date().toISOString(),
-
-          confidence:"high",
-
-          meta:{
-            tx_hash:tx.hash,
-            block_number:block.number,
-            eth_value:eth,
-            usd_value:Math.round(usd),
-            from:tx.from,
-            to:tx.to
+          id: `whale-${tx.hash.slice(0, 10)}`,
+          type: "whale_transfer",
+          category: "whale",
+          description: `Large transfer ~$${Math.round(usd)}`,
+          source: "base_rpc",
+          observed_at: new Date().toISOString(),
+          confidence: "high",
+          meta: {
+            tx_hash: tx.hash,
+            block_number: block.number,
+            eth_value: eth,
+            usd_value: Math.round(usd),
+            from: tx.from,
+            to: tx.to
           }
-
         });
-
       }
-
     }
-
   }
 
-  return signals.slice(0,5);
-
+  return signals.slice(0, 5);
 }
 
 // === DEX SWAP DETECTOR ===
 
-async function buildDexSwapSignals(latestBlock){
-
+async function buildDexSwapSignals(latestBlock) {
   const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
 
   const blocks = await getBlocksWithTx(fromBlock, latestBlock);
 
-  const signals=[];
+  const signals = [];
 
-  for(const block of blocks){
+  for (const block of blocks) {
+    if (!block?.transactions) continue;
 
-    if(!block?.transactions) continue;
+    for (const tx of block.transactions) {
+      if (!tx.data) continue;
 
-    for(const tx of block.transactions){
+      const method = tx.data.slice(0, 10);
 
-      if(!tx.data) continue;
-
-      const method = tx.data.slice(0,10);
-
-      if(!SWAP_SELECTORS.includes(method)) continue;
+      if (!SWAP_SELECTORS.includes(method)) continue;
 
       signals.push({
-
-        id:`dex-swap-${tx.hash.slice(0,8)}`,
-
-        type:"dex_swap",
-
-        category:"dex",
-
-        description:"DEX swap detected",
-
-        confidence:"medium",
-
-        observed_at:new Date().toISOString(),
-
-        source:"base_rpc",
-
-        meta:{
-          tx_hash:tx.hash,
-          from:tx.from,
-          to:tx.to,
-          block:block.number
+        id: `dex-swap-${tx.hash.slice(0, 8)}`,
+        type: "dex_swap",
+        category: "dex",
+        description: "DEX swap detected",
+        confidence: "medium",
+        observed_at: new Date().toISOString(),
+        source: "base_rpc",
+        meta: {
+          tx_hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          block: block.number
         }
-
       });
-
     }
-
   }
 
-  return signals.slice(0,5);
-
+  return signals.slice(0, 5);
 }
 
 // === DEPLOY SIGNALS ===
 
-async function buildNewContractSignals(latestBlock){
-
+async function buildNewContractSignals(latestBlock) {
   const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
 
   const blocks = await getBlocksWithTx(fromBlock, latestBlock);
 
-  const deploys=[];
+  const deploys = [];
 
-  for(const block of blocks){
+  for (const block of blocks) {
+    if (!block?.transactions) continue;
 
-    if(!block?.transactions) continue;
-
-    for(const tx of block.transactions){
-
-      if(tx.to===null){
-
+    for (const tx of block.transactions) {
+      if (tx.to === null) {
         deploys.push({
-
-          hash:tx.hash,
-          block:block.number
-
+          hash: tx.hash,
+          block: block.number
         });
-
       }
-
     }
-
   }
 
-  return deploys.slice(0,3).map((d,idx)=>({
-
-    id:`deploy-${d.block}-${idx}`,
-
-    type:"contract_deployment",
-
-    category:"deploy",
-
-    description:`New contract deployment ${d.hash.slice(0,10)}`,
-
-    source:"base_rpc",
-
-    observed_at:new Date().toISOString(),
-
-    confidence:"low",
-
-    meta:{
-      tx_hash:d.hash,
-      block_number:d.block
+  return deploys.slice(0, 3).map((d, idx) => ({
+    id: `deploy-${d.block}-${idx}`,
+    type: "contract_deployment",
+    category: "deploy",
+    description: `New contract deployment ${d.hash.slice(0, 10)}`,
+    source: "base_rpc",
+    observed_at: new Date().toISOString(),
+    confidence: "low",
+    meta: {
+      tx_hash: d.hash,
+      block_number: d.block
     }
-
   }));
-
 }
 
 // === LIQUIDITY MIGRATION DETECTOR ===
 
-async function buildLiquidityMigrationSignals(latestBlock){
+async function buildLiquidityMigrationSignals(latestBlock) {
+  const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
 
- const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
+  const blocks = await getBlocksWithTx(fromBlock, latestBlock);
 
- const blocks = await getBlocksWithTx(fromBlock, latestBlock);
+  const signals = [];
 
- const signals=[];
+  for (const block of blocks) {
+    if (!block?.transactions) continue;
 
- for(const block of blocks){
+    for (const tx of block.transactions) {
+      const eth = tx.value ? Number(formatEther(tx.value)) : 0;
 
-  if(!block?.transactions) continue;
-
-  for(const tx of block.transactions){
-
-   const eth = tx.value ? Number(formatEther(tx.value)) : 0;
-
-   if(eth > LIQUIDITY_MOVE_ETH){
-
-    signals.push({
-
-      id:`liq-migration-${tx.hash.slice(0,8)}`,
-
-      type:"liquidity_migration",
-
-      category:"liq",
-
-      description:"Large liquidity movement detected",
-
-      confidence:"medium",
-
-      observed_at:new Date().toISOString(),
-
-      source:"base_rpc",
-
-      meta:{
-        from:tx.from,
-        to:tx.to,
-        eth_value:eth,
-        tx_hash:tx.hash
+      if (eth > LIQUIDITY_MOVE_ETH) {
+        signals.push({
+          id: `liq-migration-${tx.hash.slice(0, 8)}`,
+          type: "liquidity_migration",
+          category: "liq",
+          description: "Large liquidity movement detected",
+          confidence: "medium",
+          observed_at: new Date().toISOString(),
+          source: "base_rpc",
+          meta: {
+            from: tx.from,
+            to: tx.to,
+            eth_value: eth,
+            tx_hash: tx.hash
+          }
+        });
       }
-
-    });
-
-   }
-
+    }
   }
 
- }
-
- return signals.slice(0,3);
-
+  return signals.slice(0, 3);
 }
 
 // === CONTRACT ACTIVITY DETECTOR ===
 
-async function buildContractActivitySignals(latestBlock){
-
+async function buildContractActivitySignals(latestBlock) {
   const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
   const blocks = await getBlocksWithTx(fromBlock, latestBlock);
 
   const signals = [];
 
-  for(const block of blocks){
+  for (const block of blocks) {
+    if (!block?.transactions) continue;
 
-    if(!block?.transactions) continue;
+    for (const tx of block.transactions) {
+      if (!tx.data) continue;
 
-    for(const tx of block.transactions){
-
-      if(!tx.data) continue;
-
-      if(tx.data !== "0x"){
-
+      if (tx.data !== "0x") {
         signals.push({
-
-          id:`contract-call-${tx.hash.slice(0,8)}`,
-          type:"contract_interaction",
-          category:"activity",
-          description:"Contract interaction detected",
-          source:"base_rpc",
-          observed_at:new Date().toISOString(),
-          confidence:"low",
-
-          meta:{
-            tx_hash:tx.hash,
-            from:tx.from,
-            to:tx.to,
-            block:block.number
+          id: `contract-call-${tx.hash.slice(0, 8)}`,
+          type: "contract_interaction",
+          category: "activity",
+          description: "Contract interaction detected",
+          source: "base_rpc",
+          observed_at: new Date().toISOString(),
+          confidence: "low",
+          meta: {
+            tx_hash: tx.hash,
+            from: tx.from,
+            to: tx.to,
+            block: block.number
           }
-
         });
-
       }
-
     }
-
   }
 
-  return signals.slice(0,10);
-
+  return signals.slice(0, 10);
 }
 
 // === ERC20 DEPLOY DETECTOR ===
 
-async function detectERC20Deploys(latestBlock){
-
+async function detectERC20Deploys(latestBlock) {
   const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
   const blocks = await getBlocksWithTx(fromBlock, latestBlock);
 
   const signals = [];
 
-  for(const block of blocks){
+  for (const block of blocks) {
+    if (!block?.transactions) continue;
 
-    if(!block?.transactions) continue;
+    for (const tx of block.transactions) {
+      if (tx.to !== null) continue;
+      if (!tx.data) continue;
 
-    for(const tx of block.transactions){
-
-      if(tx.to !== null) continue;
-      if(!tx.data) continue;
-
-      if(tx.data.length > 2000){
-
+      if (tx.data.length > 2000) {
         signals.push({
-
-          id:`token-deploy-${tx.hash.slice(0,8)}`,
-          type:"token_deploy",
-          category:"token_launch",
-          description:"Possible ERC20 token deployment",
-
-          observed_at:new Date().toISOString(),
-          source:"base_rpc",
-          confidence:"medium",
-
-          meta:{
-            deployer:tx.from,
-            tx_hash:tx.hash,
-            block:block.number
+          id: `token-deploy-${tx.hash.slice(0, 8)}`,
+          type: "token_deploy",
+          category: "token_launch",
+          description: "Possible ERC20 token deployment",
+          observed_at: new Date().toISOString(),
+          source: "base_rpc",
+          confidence: "medium",
+          meta: {
+            deployer: tx.from,
+            tx_hash: tx.hash,
+            block: block.number
           }
-
         });
-
       }
-
     }
-
   }
 
-  return signals.slice(0,3);
-
+  return signals.slice(0, 3);
 }
 
 // === DEX ACTIVITY DETECTOR ===
 
-async function detectDexActivity(latestBlock){
-
+async function detectDexActivity(latestBlock) {
   const fromBlock = Math.max(0, latestBlock - LOOKBACK_BLOCKS);
   const blocks = await getBlocksWithTx(fromBlock, latestBlock);
 
   const signals = [];
 
-  for(const block of blocks){
+  for (const block of blocks) {
+    if (!block?.transactions) continue;
 
-    if(!block?.transactions) continue;
+    for (const tx of block.transactions) {
+      if (!tx.data || tx.data === "0x") continue;
 
-    for(const tx of block.transactions){
+      const method = tx.data.slice(0, 10);
 
-      if(!tx.data || tx.data === "0x") continue;
-
-      const method = tx.data.slice(0,10);
-
-      if(SWAP_SELECTORS.includes(method)){
-
+      if (SWAP_SELECTORS.includes(method)) {
         signals.push({
-
-          id:`dex-activity-${tx.hash.slice(0,8)}`,
-          type:"dex_activity",
-          category:"dex",
-
-          description:"DEX router interaction detected",
-
-          observed_at:new Date().toISOString(),
-          source:"base_rpc",
-          confidence:"medium",
-
-          meta:{
-            tx_hash:tx.hash,
-            router:tx.to,
-            trader:tx.from,
-            block:block.number
+          id: `dex-activity-${tx.hash.slice(0, 8)}`,
+          type: "dex_activity",
+          category: "dex",
+          description: "DEX router interaction detected",
+          observed_at: new Date().toISOString(),
+          source: "base_rpc",
+          confidence: "medium",
+          meta: {
+            tx_hash: tx.hash,
+            router: tx.to,
+            trader: tx.from,
+            block: block.number
           }
-
         });
-
       }
-
     }
-
   }
 
-  return signals.slice(0,5);
-
+  return signals.slice(0, 5);
 }
 
 // === BLOCK OBSERVATION ===
 
-function buildBlockObservation(latestBlock){
-
-  return{
-
-    id:`bf-obs-${latestBlock}`,
-
-    type:"block_observation",
-
-    category:"block",
-
-    description:`Watching Base block ${latestBlock}`,
-
-    confidence:"low",
-
-    observed_at:new Date().toISOString(),
-
-    source:"base_rpc"
-
-  }
-
+function buildBlockObservation(latestBlock) {
+  return {
+    id: `bf-obs-${latestBlock}`,
+    type: "block_observation",
+    category: "block",
+    description: `Watching Base block ${latestBlock}`,
+    confidence: "low",
+    observed_at: new Date().toISOString(),
+    source: "base_rpc"
+  };
 }
 
 // === MAIN HANDLER ===
 
-export async function GET(req){
-
-  try{
-
-    const {searchParams} = new URL(req.url);
+export async function GET(req) {
+  try {
+    const { searchParams } = new URL(req.url);
 
     const address = searchParams.get("address")?.toLowerCase() || null;
 
     const latestBlock = await provider.getBlockNumber();
 
-    const signals=[];
+    const signals = [];
 
-    if(address){
-
-      signals.push(...await buildWalletOverview(address,latestBlock));
-
+    if (address) {
+      signals.push(...(await buildWalletOverview(address, latestBlock)));
     }
 
     const [
@@ -709,25 +542,19 @@ export async function GET(req){
       deploys,
       whales,
       swaps,
-      liquidity
+      liquidity,
+      contractActivity,
+      tokenDeploys,
+      dexActivity
     ] = await Promise.all([
-
       buildActiveTokenSignals(latestBlock),
-
       buildNewContractSignals(latestBlock),
-
       buildWhaleSignals(latestBlock),
-
       buildDexSwapSignals(latestBlock),
-
       buildLiquidityMigrationSignals(latestBlock),
-
       buildContractActivitySignals(latestBlock),
-
       detectERC20Deploys(latestBlock),
-
       detectDexActivity(latestBlock)
-
     ]);
 
     signals.push(
@@ -735,44 +562,82 @@ export async function GET(req){
       ...deploys,
       ...whales,
       ...swaps,
-      ...liquidity
+      ...liquidity,
+      ...contractActivity,
+      ...tokenDeploys,
+      ...dexActivity
     );
 
     signals.push(buildBlockObservation(latestBlock));
 
+    // live blocks / top tokens / smart wallets
+    const blocks = await getBlocksWithTx(
+      Math.max(0, latestBlock - LOOKBACK_BLOCKS),
+      latestBlock
+    );
+
+    const tokenCounts = new Map();
+
+    for (const block of blocks) {
+      if (!block?.transactions) continue;
+
+      for (const tx of block.transactions) {
+        if (!tx.data || !tx.to) continue;
+        if (!tx.data.startsWith("0xa9059cbb")) continue;
+
+        const token = tx.to.toLowerCase();
+        tokenCounts.set(token, (tokenCounts.get(token) || 0) + 1);
+      }
+    }
+
+    const blockNumbers = blocks
+      .map((b) => b?.number)
+      .filter(Boolean);
+
+    const smartWallets = signals
+      .filter((s) => s.type === "smart_money_wallet")
+      .map((s) => ({
+        address: s.meta.wallet,
+        volume_eth: s.meta.volume_eth
+      }));
+
     return NextResponse.json({
+      agent: "BaseFlow Signal Agent",
+      chain: "Base",
+      latest_block: latestBlock,
+      updated_at: new Date().toISOString(),
 
-      agent:"BaseFlow Signal Agent",
+      live_feed: {
+        latest_blocks: blockNumbers.slice(-5)
+      },
 
-      chain:"Base",
+      top_tokens: Array.from(tokenCounts.entries())
+        .slice(0, 5)
+        .map(([token, count]) => ({
+          token,
+          transfers: count
+        })),
 
-      latest_block:latestBlock,
+      smart_wallets: smartWallets,
 
-      updated_at:new Date().toISOString(),
-
-      erc8004:{
-        network:"base",
-        agent_id:AGENT_8004_ID,
-        agent_wallet:AGENT_WALLET,
-        explorer_url:AGENT_8004_URL
+      erc8004: {
+        network: "base",
+        agent_id: AGENT_8004_ID,
+        agent_wallet: AGENT_WALLET,
+        explorer_url: AGENT_8004_URL
       },
 
       signals
-
     });
+  } catch (err) {
+    console.error("Signal agent error", err);
 
-  }catch(err){
-
-    console.error("Signal agent error",err);
-
-    return NextResponse.json({
-
-      error:"BaseFlow Signal Agent failed",
-
-      message:err?.message || "unknown error"
-
-    },{status:500});
-
+    return NextResponse.json(
+      {
+        error: "BaseFlow Signal Agent failed",
+        message: err?.message || "unknown error"
+      },
+      { status: 500 }
+    );
   }
-
 }

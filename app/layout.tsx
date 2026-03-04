@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "BaseFlow Signal Agent",
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
     images: ["/hero.png"]
   },
   other: {
-    "base:app_id": "699b5910eb8da8c3b3d7b15c" // yahan apna real app id daalo
+    "base:app_id": "699b5910eb8da8c3b3d7b15c"
   }
 };
 
@@ -25,7 +26,22 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body
+        style={{
+          margin: 0,
+          padding: 0,
+          background: "#020617",
+          color: "#f9fafb",
+          fontFamily:
+            "system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "flex-start",
+          minHeight: "100vh"
+        }}
+      >
+        {children}
+      </body>
     </html>
   );
 }

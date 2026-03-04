@@ -6,15 +6,15 @@
   },
   
   "miniapp": {
-    "id": "baseflow-signal-agent",
-    "version": "1.0.0",
-    "name": "BaseFlow Signal Agent",
+    "version": "1",
+    "name": "BaseFlow Signal",
     "iconUrl": "https://baseflo.vercel.app/hero.png",
     "homeUrl": "https://baseflo.vercel.app",
     "imageUrl": "https://baseflo.vercel.app/hero.png",
     "buttonTitle": "Open Agent",
     "splashImageUrl": "https://baseflo.vercel.app/hero.png",
     "splashBackgroundColor": "#050816",
+    "webhookUrl": "https://baseflo.vercel.app/api/webhook",
     "subtitle": "Signals on Base chain",
     "description": "Onchain signal mini app for Base: latest blocks, active tokens, new contract deployments, and wallet risk overview.",
     "screenshotUrls": [
@@ -26,6 +26,7 @@
     "tagline": "Onchain signals on Base.",
     "ogTitle": "BaseFlow Signal Agent",
     "ogDescription": "Live Base block activity, active tokens, new contracts, and wallet risk overview.",
-    "ogImageUrl": "https://baseflo.vercel.app/hero.png"
+    "ogImageUrl": "https://baseflo.vercel.app/hero.png",
+    "castShareUrl": "https://baseflo.vercel.app"
   }
 }

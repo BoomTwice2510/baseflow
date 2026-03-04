@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 type Signal = {
   id: string;
@@ -65,6 +66,18 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh]);
 
+  // Mini App SDK: mark app as ready so splash screen hides
+  useEffect(() => {
+    const markReady = async () => {
+      try {
+        await sdk.actions.ready();
+      } catch (e) {
+        console.error("Failed to signal ready", e);
+      }
+    };
+    markReady();
+  }, []);
+
   const signals: Signal[] = data?.signals || [];
 
   const filteredSignals = signals.filter((s) => {
@@ -74,7 +87,11 @@ export default function HomePage() {
       return cat === "liq" || s.type === "wallet_overview";
     }
     if (activeTab === "vol") {
-      return cat === "vol" || s.type === "volume_anomaly" || s.type === "whale_activity";
+      return (
+        cat === "vol" ||
+        s.type === "volume_anomaly" ||
+        s.type === "whale_activity"
+      );
     }
     if (activeTab === "deploy") {
       return cat === "deploy" || s.type === "contract_deployment";
@@ -301,7 +318,9 @@ export default function HomePage() {
                       border: "1px solid rgba(148,163,184,0.5)"
                     }}
                   >
-                    {TYPE_LABELS[s.type] || TYPE_LABELS[s.category || ""] || s.type}
+                    {TYPE_LABELS[s.type] ||
+                      TYPE_LABELS[s.category || ""] ||
+                      s.type}
                   </span>
                 </div>
 

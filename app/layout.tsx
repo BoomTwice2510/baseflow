@@ -2,22 +2,31 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://baseflo.vercel.app"),
+
   title: "BaseFlow Signal Agent",
   description: "Live Uniswap v3 and volume signals on Base.",
+
   icons: {
     icon: "/hero.png",
     shortcut: "/hero.png",
     apple: "/hero.png"
   },
+
   openGraph: {
     title: "BaseFlow Signal Agent",
     description: "Live Uniswap v3 and volume signals on Base.",
     images: ["/hero.png"]
   },
+
   other: {
     "base:app_id": "699b5910eb8da8c3b3d7b15c",
-    "fc:miniapp": '{"version":"1","imageUrl":"https://baseflo.vercel.app/hero.png","button":{"title":"Open Agent","action":{"type":"launch_miniapp"}}}',
-    "fc:frame": '{"version":"1","imageUrl":"https://baseflo.vercel.app/hero.png","button":{"title":"Open Agent","action":{"type":"launch_frame"}}}'
+
+    "fc:miniapp":
+      '{"version":"1","imageUrl":"https://baseflo.vercel.app/hero.png","button":{"title":"Open Agent","action":{"type":"launch_miniapp"}}}',
+
+    "fc:frame":
+      '{"version":"1","imageUrl":"https://baseflo.vercel.app/hero.png","button":{"title":"Open Agent","action":{"type":"launch_frame"}}}'
   }
 };
 

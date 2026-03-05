@@ -1,894 +1,301 @@
-"use client";
+// app/page.tsx
+import Image from "next/image";
+import { Suspense } from "react";
 
-import { useEffect, useState } from "react";
-import { sdk } from "@farcaster/miniapp-sdk";
+async function fetchSignals() {
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!;
 
-type Signal = {
-  id: string;
-  type: string;
-  category?: string;
-  description: string;
-<<<<<<< HEAD
-  confidence: "high" | "medium" | "low" | string;
-=======
-  confidence: string;
->>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
-  observed_at: string;
-  source: string;
-  note?: string;
-  meta?: any;
-};
-
-type TabKey = "all" | "liq" | "vol" | "deploy" | "block";
-
-<<<<<<< HEAD
-type ApiResponse = {
-  agent: string;
-  chain: string;
-  latest_block: number;
-  updated_at: string;
-  live_feed?: {
-    latest_blocks?: number[];
-  };
-  top_tokens?: { token: string; transfers: number }[];
-  smart_wallets?: { address: string; volume_eth: number }[];
-  erc8004?: {
-    network: string;
-    agent_id: number;
-    agent_wallet: string;
-    explorer_url: string;
-  };
-  signals: Signal[];
-};
-
-=======
->>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
-const TYPE_LABELS: Record<string, string> = {
-  liquidity_event: "Liquidity",
-  liquidity_migration: "Liquidity",
-  volume_anomaly: "Volume",
-  whale_transfer: "Whale",
-  dex_swap: "DEX",
-  contract_deployment: "Deploy",
-  block_observation: "Block",
-  wallet_overview: "Wallet",
-  smart_money_wallet: "Smart Wallet",
-  active_token: "Token",
-  token_deploy: "Token Launch",
-  contract_interaction: "Contract"
-};
-
-const PRIORITY_COLOR: Record<string, string> = {
-  high: "#ef4444",
-  medium: "#f59e0b",
-  low: "#64748b"
-};
-
-export default function HomePage() {
-<<<<<<< HEAD
-  const [data, setData] = useState<ApiResponse | null>(null);
-=======
-  const [data, setData] = useState<any>(null);
->>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
-  const [loading, setLoading] = useState(true);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
-  const [address, setAddress] = useState("");
-
-  async function loadSignals(customAddress?: string) {
-    try {
-      setLoading(true);
-
-      const params = new URLSearchParams();
-      const addr = (customAddress ?? address).trim();
-
-      if (addr) params.set("address", addr);
-
-      const url = "/api/signals" + (params.toString() ? `?${params}` : "");
-<<<<<<< HEAD
-      const res = await fetch(url, { cache: "no-store" });
-      const json = (await res.json()) as ApiResponse;
-=======
-      const res = await fetch(url);
-      const json = await res.json();
->>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
-
-      setData(json);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadSignals();
-  }, []);
-
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const id = setInterval(() => {
-      loadSignals();
-    }, 15000);
-
-    return () => clearInterval(id);
-  }, [autoRefresh]);
-
-  useEffect(() => {
-<<<<<<< HEAD
-    // Farcaster Mini App splash hide
-    sdk?.actions
-      ?.ready()
-      .then(() => {})
-      .catch(() => {});
-=======
-    sdk.actions.ready().catch(() => {});
->>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
-  }, []);
-
-  const signals: Signal[] = data?.signals || [];
-
-  const walletOverview = signals.find((s) => s.type === "wallet_overview");
-
-  const sortedSignals = [...signals].sort(
-    (a, b) =>
-      new Date(b.observed_at).getTime() - new Date(a.observed_at).getTime()
-  );
-
-  const filteredSignalsRaw = sortedSignals.filter((s) => {
-    if (s.type === "wallet_overview") return false;
-
-    if (activeTab === "all") return true;
-
-    const cat = s.category || "";
-
-    if (activeTab === "liq") return cat === "liq";
-    if (activeTab === "vol") return cat === "vol";
-    if (activeTab === "deploy") return cat === "deploy";
-    if (activeTab === "block") return cat === "block";
-
-    return true;
+const res = await fetch(`${BASE_URL}/api/signals`, {
+    cache: "no-store",
   });
+  if (!res.ok) throw new Error("Failed to load signals");
+  return res.json();
+}
 
-  const filteredSignals = filteredSignalsRaw;
+export default async function HomePage() {
+  const data = await fetchSignals();
+  const signals = data.signals || [];
+  const meta = data.meta || {};
 
-  const recent = sortedSignals
-    .filter(
-      (s) =>
-        s.type === "dex_swap" ||
-        s.type === "contract_deployment" ||
-        s.type === "token_deploy" ||
-        s.type === "liquidity_migration"
-    )
-    .slice(0, 6);
-
-  const stats = {
-    total: signals.length,
-    whales: signals.filter((s) => s.type === "whale_transfer").length,
-    deploys: signals.filter((s) => s.type === "contract_deployment").length,
-    tokens: signals.filter((s) => s.type === "active_token").length
-  };
-
-<<<<<<< HEAD
-  async function copy(v: string) {
-    try {
-      await navigator.clipboard.writeText(v);
-    } catch (err) {
-      console.error("clipboard error", err);
-    }
-=======
-  function copy(v: string) {
-    navigator.clipboard.writeText(v);
->>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
-  }
+  const whaleSignals = signals.filter((s: any) => s.type === "whale_tx");
+  const deploySignals = signals.filter((s: any) => s.type === "token_deploy");
+  const volumeSignals = signals.filter((s: any) => s.type === "volume_spike");
 
   return (
-    <div
-      style={{
-        width: "100vw",
-        maxWidth: 430,
-        minHeight: "100vh",
-        padding: 16,
-        fontFamily: "system-ui",
-        background:
-          "radial-gradient(circle at top, #020617 0, #00010a 30%, #020617 80%)",
-        color: "#f9fafb",
-        position: "relative",
-        overflow: "hidden",
-        boxShadow: "0 24px 60px rgba(0,0,0,0.9)",
-        borderRadius: 24
-      }}
-    >
-      {/* subtle glow background */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          opacity: 0.4,
-          mixBlendMode: "screen",
-          background:
-            "radial-gradient(circle at 0% 0%, rgba(59,130,246,0.25), transparent 55%), radial-gradient(circle at 100% 100%, rgba(16,185,129,0.2), transparent 55%)",
-          filter: "blur(40px)"
-        }}
-      />
+    <main className="min-h-screen bg-white text-slate-900 flex flex-col items-center">
+      {/* Top hero */}
+      <section className="w-full max-w-md sm:max-w-2xl px-4 pt-6 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="relative h-10 w-10 rounded-2xl border border-sky-200 bg-sky-50 shadow-[0_0_0_4px_rgba(56,189,248,0.2)] overflow-hidden">
+            <Image
+              src="/hero.png"
+              alt="BaseFlow Signal"
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">
+              BASE FLOW SIGNAL
+            </h1>
+            <p className="text-xs text-slate-500">
+              Live whales, deploys & volume on Base
+            </p>
+          </div>
+        </div>
 
-      <div style={{ position: "relative", zIndex: 1 }}>
-        {/* HEADER */}
-        <header style={{ marginBottom: 16 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 10
-            }}
-          >
-            {/* logo + title */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "999px",
-                  overflow: "hidden",
-                  border: "1px solid rgba(148,163,184,.4)",
-                  background:
-                    "conic-gradient(from 140deg, #1d4ed8, #22c55e, #a855f7, #1d4ed8)",
-                  padding: 2,
-                  boxShadow: "0 0 20px rgba(37,99,235,0.5)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}
+        {/* mini app / farcaster friendly header actions */}
+        <div className="mt-4 flex gap-2">
+          <button className="flex-1 text-xs font-medium rounded-full bg-slate-900 text-white py-2 shadow-md active:scale-[0.97] transition-transform">
+            Open in Mini App
+          </button>
+          <button className="flex-1 text-xs font-medium rounded-full border border-slate-200 text-slate-700 py-2 bg-white shadow-sm active:scale-[0.97] transition-transform">
+            View on Farcaster
+          </button>
+        </div>
+      </section>
+
+      {/* Cards grid */}
+      <section className="w-full max-w-md sm:max-w-2xl px-4 pb-10 space-y-4">
+        {/* Wallet checker */}
+        <WalletCheckerCard />
+
+        {/* Whale card */}
+        <AnimatedCard
+          title="Whale Activity"
+          subtitle="High value moves on Base"
+          accent="from-sky-100 via-cyan-50 to-blue-100"
+          border="border-sky-300"
+          icon={
+            <div className="h-9 w-9 rounded-2xl bg-sky-500/10 border border-sky-300 flex items-center justify-center animate-pulse">
+              <span className="text-sky-600 text-lg">🐋</span>
+            </div>
+          }
+        >
+          <ul className="space-y-2">
+            {whaleSignals.slice(0, 4).map((w: any, i: number) => (
+              <li
+                key={w.tx}
+                className="flex items-center justify-between text-xs"
               >
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    borderRadius: "999px",
-                    overflow: "hidden",
-                    background: "#020617"
-                  }}
-                >
-                  <img
-                    src="/hero.png"
-                    alt="Base agent logo"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover"
-                    }}
-                  />
+                <div className="flex flex-col">
+                  <span className="font-medium text-slate-800">
+                    {w.amount.toFixed(2)} ETH
+                  </span>
+                  <span className="text-[10px] text-slate-500 truncate max-w-[200px]">
+                    {w.wallet}
+                  </span>
                 </div>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>
-                  BaseFlow Signal Agent
-                </div>
-                <span style={{ fontSize: 11, opacity: 0.7 }}>
-                  Real-time on-chain radar
+                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-white/70 border border-sky-200 px-2 py-0.5 text-[10px] text-sky-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  Whale
                 </span>
-              </div>
-            </div>
-
-            {/* LIVE pill */}
-            <button
-              onClick={() => setAutoRefresh((v) => !v)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 11,
-                padding: "5px 12px",
-                borderRadius: 999,
-                border: "1px solid rgba(34,197,94,.5)",
-                background: autoRefresh
-                  ? "linear-gradient(135deg, rgba(22,163,74,.3), rgba(16,185,129,.15))"
-                  : "transparent",
-                color: autoRefresh ? "#bbf7d0" : "#9ca3af",
-                cursor: "pointer",
-                transition:
-                  "background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease",
-                boxShadow: autoRefresh
-                  ? "0 0 12px rgba(34,197,94,0.45)"
-                  : "none"
-              }}
-            >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "999px",
-                  backgroundColor: autoRefresh ? "#22c55e" : "#6b7280",
-                  boxShadow: autoRefresh
-                    ? "0 0 10px rgba(34,197,94,0.7)"
-                    : "none",
-                  transition: "background 0.2s ease, box-shadow 0.2s ease"
-                }}
-              />
-              {autoRefresh ? "LIVE" : "PAUSED"}
-            </button>
-          </div>
-
-          <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>
-            Chain: Base · Block{" "}
-            <strong>{data?.latest_block ?? "loading…"}</strong>
-          </div>
-
-          {data?.erc8004 && (
-            <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>
-              Agent #{data.erc8004.agent_id}
-              {" · "}
-              <a
-                href={data.erc8004.explorer_url}
-                target="_blank"
-                style={{
-                  color: "#60a5fa",
-                  textDecoration: "none",
-                  borderBottom: "1px dashed rgba(96,165,250,0.6)"
-                }}
-              >
-                8004scan
-              </a>
-            </div>
-          )}
-        </header>
-
-        {/* LIVE BLOCKS + ACTIVE TOKENS PANELS */}
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 10,
-            marginBottom: 12,
-            fontSize: 11
-          }}
-        >
-          {/* LIVE BLOCK FEED */}
-          <div
-            style={{
-              position: "relative",
-              background:
-                "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,64,175,0.55))",
-              padding: 10,
-              borderRadius: 14,
-              border: "1px solid rgba(148,163,184,.2)",
-              overflow: "hidden",
-              boxShadow: "0 10px 30px rgba(15,23,42,0.75)"
-            }}
-          >
-            <div
-              style={{
-                fontWeight: 600,
-                marginBottom: 6,
-                position: "relative",
-                display: "inline-block"
-              }}
-            >
-              <span
-                style={{
-                  position: "absolute",
-                  inset: -6,
-                  borderRadius: 999,
-                  background:
-                    "radial-gradient(circle, rgba(56,189,248,.5), transparent 60%)",
-                  opacity: 0.25,
-                  filter: "blur(6px)",
-                  animation: "pulseGlow 2s ease-in-out infinite",
-                  pointerEvents: "none"
-                }}
-              />
-              <span style={{ position: "relative" }}>Live Blocks</span>
-            </div>
-
-            {data?.live_feed?.latest_blocks?.map((b: number) => (
-              <div
-                key={b}
-                style={{
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco",
-                  fontSize: 11,
-                  opacity: 0.9
-                }}
-              >
-                #{b}
-              </div>
+              </li>
             ))}
-          </div>
-
-          {/* ACTIVE TOKENS */}
-          <div
-            style={{
-              position: "relative",
-              background:
-                "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(56,189,248,0.45))",
-              padding: 10,
-              borderRadius: 14,
-              border: "1px solid rgba(148,163,184,.2)",
-              overflow: "hidden",
-              boxShadow: "0 10px 30px rgba(15,23,42,0.75)"
-            }}
-          >
-            <div
-              style={{
-                fontWeight: 600,
-                marginBottom: 6,
-                position: "relative",
-                display: "inline-block"
-              }}
-            >
-              <span
-                style={{
-                  position: "absolute",
-                  inset: -6,
-                  borderRadius: 999,
-                  background:
-                    "radial-gradient(circle, rgba(96,165,250,.5), transparent 60%)",
-                  opacity: 0.25,
-                  filter: "blur(6px)",
-                  animation: "pulseGlow 2.3s ease-in-out infinite",
-                  pointerEvents: "none"
-                }}
-              />
-              <span style={{ position: "relative" }}>Active Tokens</span>
-            </div>
-
-            {(!data?.top_tokens || data.top_tokens.length === 0) && (
-              <div style={{ opacity: 0.6 }}>No hot tokens yet</div>
+            {whaleSignals.length === 0 && (
+              <p className="text-xs text-slate-400">
+                No whales spotted in the latest block.
+              </p>
             )}
+          </ul>
+        </AnimatedCard>
 
-            {data?.top_tokens?.map((t: any) => (
-              <div
-                key={t.token}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: 11
-                }}
+        {/* Deploy card */}
+        <AnimatedCard
+          title="Fresh Deploys"
+          subtitle="New tokens appearing right now"
+          accent="from-violet-100 via-indigo-50 to-fuchsia-100"
+          border="border-violet-300"
+          icon={
+            <div className="h-9 w-9 rounded-2xl bg-violet-500/10 border border-violet-300 flex items-center justify-center animate-spin-slow">
+              <span className="text-violet-600 text-lg">✨</span>
+            </div>
+          }
+        >
+          <ul className="space-y-2">
+            {deploySignals.slice(0, 4).map((d: any) => (
+              <li
+                key={d.contract}
+                className="flex items-center justify-between text-xs"
               >
-                <span>{t.token.slice(0, 8)}...</span>
-                <span style={{ opacity: 0.8 }}>{t.transfers} tx</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* RECENT ACTIVITY STRIP */}
-        {recent.length > 0 && (
-          <section
-            style={{
-              marginBottom: 12,
-              fontSize: 11,
-              overflowX: "auto",
-              WebkitOverflowScrolling: "touch"
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                paddingBottom: 4,
-                minWidth: "100%"
-              }}
-            >
-              {recent.map((s) => (
-                <div
-                  key={s.id}
-                  style={{
-                    minWidth: 140,
-                    padding: "6px 8px",
-                    borderRadius: 999,
-                    background:
-                      s.type === "dex_swap"
-                        ? "linear-gradient(135deg,rgba(59,130,246,.3),rgba(56,189,248,.2))"
-                        : s.type === "contract_deployment"
-                        ? "linear-gradient(135deg,rgba(168,85,247,.35),rgba(59,130,246,.25))"
-                        : "linear-gradient(135deg,rgba(34,197,94,.35),rgba(16,185,129,.25))",
-                    border: "1px solid rgba(148,163,184,.35)",
-                    boxShadow: "0 8px 20px rgba(15,23,42,0.7)",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis"
-                  }}
-                >
-                  <div style={{ fontSize: 10, opacity: 0.8 }}>
-                    {TYPE_LABELS[s.type] || s.type}
-                  </div>
-                  <div style={{ fontSize: 11 }}>
-                    {s.type === "dex_swap" && "DEX swap"}
-                    {s.type === "contract_deployment" && "New contract"}
-                    {s.type === "token_deploy" && "Token launch"}
-                    {s.type === "liquidity_migration" && "Liquidity move"}
-                  </div>
+                <div className="flex flex-col">
+                  <span className="font-medium text-slate-800 truncate max-w-[180px]">
+                    {d.contract}
+                  </span>
+                  <span className="text-[10px] text-slate-500 truncate max-w-[180px]">
+                    by {d.creator}
+                  </span>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-white/70 border border-violet-200 px-2 py-0.5 text-[10px] text-violet-700">
+                  🧬 New token
+                </span>
+              </li>
+            ))}
+            {deploySignals.length === 0 && (
+              <p className="text-xs text-slate-400">
+                No fresh deploys in the latest scan.
+              </p>
+            )}
+          </ul>
+        </AnimatedCard>
 
-        {/* STATS */}
-        <section
-          style={{
-            display: "flex",
-            gap: 8,
-            marginBottom: 12,
-            fontSize: 11,
-            flexWrap: "wrap"
-          }}
+        {/* Volume spikes */}
+        <AnimatedCard
+          title="Volume Spikes"
+          subtitle="Unusual on-chain volume"
+          accent="from-amber-100 via-orange-50 to-rose-100"
+          border="border-amber-300"
+          icon={
+            <div className="h-9 w-9 rounded-2xl bg-amber-500/10 border border-amber-300 flex items-center justify-center">
+              <span className="text-amber-600 text-lg animate-bounce">📈</span>
+            </div>
+          }
         >
-          {[
-            { label: "Signals", value: stats.total },
-            { label: "Whales", value: stats.whales },
-            { label: "Deploys", value: stats.deploys },
-            { label: "Tokens", value: stats.tokens }
-          ].map((s) => (
-            <div
-              key={s.label}
-              style={{
-                padding: "5px 10px",
-                borderRadius: 999,
-                background:
-                  "linear-gradient(135deg, rgba(15,23,42,.95), rgba(15,23,42,.7))",
-                border: "1px solid rgba(148,163,184,.35)",
-                boxShadow: "0 6px 18px rgba(15,23,42,0.7)",
-                display: "flex",
-                alignItems: "center",
-                gap: 4
-              }}
-            >
-              <span>{s.label}</span>
-              <strong>{s.value}</strong>
-            </div>
-          ))}
-        </section>
+          <ul className="space-y-2">
+            {volumeSignals.slice(0, 4).map((v: any) => (
+              <li key={v.id || v.tx || Math.random()} className="text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-slate-800">
+                    {v.amount.toLocaleString()} USD
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    {v.token || "Unknown token"}
+                  </span>
+                </div>
+              </li>
+            ))}
+            {volumeSignals.length === 0 && (
+              <p className="text-xs text-slate-400">
+                No abnormal volume in the latest window.
+              </p>
+            )}
+          </ul>
+        </AnimatedCard>
 
-        {/* WALLET INPUT */}
-        <section style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div
-              style={{
-                position: "relative",
-                flex: 1
-              }}
-            >
-              <input
-                style={{
-                  width: "100%",
-                  background:
-                    "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(15,23,42,0.8))",
-                  borderRadius: 999,
-                  border: "1px solid rgba(148,163,184,.5)",
-                  padding: "7px 12px",
-                  fontSize: 11,
-                  color: "#f9fafb",
-                  outline: "none",
-                  boxShadow: "0 6px 18px rgba(15,23,42,0.7)"
-                }}
-                placeholder="Check wallet (0x...)"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
-              <span
-                style={{
-                  position: "absolute",
-                  right: 14,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: 10,
-                  opacity: 0.5
-                }}
-              >
-                optional
-              </span>
+        {/* Meta / status */}
+        <AnimatedCard
+          title="Feed Status"
+          subtitle="BaseFlow health check"
+          accent="from-slate-100 via-slate-50 to-sky-50"
+          border="border-slate-200"
+          icon={
+            <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 border border-emerald-300 flex items-center justify-center">
+              <span className="text-emerald-600 text-lg">✅</span>
             </div>
-
-            <button
-<<<<<<< HEAD
-              onClick={() => loadSignals(address)}
-=======
-              onClick={() => loadSignals()}
->>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
-              style={{
-                background:
-                  "linear-gradient(135deg,#2563eb,#4f46e5,#7c3aed)",
-                border: "none",
-                borderRadius: 999,
-                padding: "7px 14px",
-                fontSize: 11,
-                color: "#fff",
-                boxShadow: "0 10px 26px rgba(37,99,235,0.65)",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                transform: "translateY(0)",
-                transition:
-                  "transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease"
-              }}
-            >
-              Scan
-            </button>
-          </div>
-        </section>
-
-        {/* WALLET SNAPSHOT */}
-        {walletOverview && (
-          <section
-            style={{
-              marginBottom: 12,
-              padding: 12,
-              borderRadius: 14,
-              background:
-                "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(59,130,246,0.65))",
-              border: "1px solid rgba(129,140,248,.7)",
-              boxShadow: "0 12px 30px rgba(15,23,42,0.9)",
-              fontSize: 11
-            }}
-          >
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              Wallet Snapshot
-            </div>
-            <div style={{ fontSize: 11, opacity: 0.9 }}>
-              Tx: {walletOverview.meta?.tx_count} · In:{" "}
-              {walletOverview.meta?.volume_in_eth} ETH · Out:{" "}
-              {walletOverview.meta?.volume_out_eth} ETH
-            </div>
-            <div style={{ fontSize: 11, marginTop: 4 }}>
-              Class: <strong>{walletOverview.meta?.wallet_class}</strong> ·
-              Tokens: {walletOverview.meta?.unique_tokens_transfer}
-            </div>
-          </section>
-        )}
-
-        {/* SMART WALLET TRACKER PANEL */}
-        <section
-          style={{
-            marginBottom: 14,
-            fontSize: 11,
-            background:
-              "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(37,99,235,0.55))",
-            padding: 12,
-            borderRadius: 14,
-            border: "1px solid rgba(129,140,248,.5)",
-            boxShadow: "0 12px 30px rgba(15,23,42,0.85)"
-          }}
+          }
         >
-          <div
-            style={{
-              fontWeight: 600,
-              marginBottom: 6,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center"
-            }}
-          >
-            <span>Smart Wallet Activity</span>
-            <span style={{ fontSize: 10, opacity: 0.7 }}>
-              {data?.smart_wallets?.length || 0} wallets
-            </span>
-          </div>
-
-          {(!data?.smart_wallets || data.smart_wallets.length === 0) && (
-            <div style={{ opacity: 0.7 }}>
-              No smart money detected in this window.
-            </div>
-          )}
-
-          {data?.smart_wallets?.map((w: any) => (
-            <div
-              key={w.address}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginTop: 4
-              }}
-            >
-              <span>{w.address.slice(0, 8)}...</span>
-              <span style={{ fontSize: 11, opacity: 0.9 }}>
-                {w.volume_eth} ETH
-              </span>
-            </div>
-          ))}
-        </section>
-
-        {/* FILTERS */}
-        <section
-          style={{
-            display: "flex",
-            gap: 6,
-            marginBottom: 14,
-            padding: 4,
-            borderRadius: 999,
-            background:
-              "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.8))",
-            boxShadow: "0 10px 24px rgba(15,23,42,0.8)"
-          }}
-        >
-          {["all", "liq", "vol", "deploy", "block"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setActiveTab(t as TabKey)}
-              style={{
-                padding: "5px 12px",
-                borderRadius: 999,
-                border: "none",
-                background:
-                  activeTab === t
-                    ? "linear-gradient(135deg,#2563eb,#22c55e)"
-                    : "transparent",
-                fontSize: 11,
-                color: activeTab === t ? "#f9fafb" : "#9ca3af",
-                cursor: "pointer",
-                transition:
-                  "background 0.15s ease, color 0.15s ease, transform 0.1s ease",
-                transform: activeTab === t ? "translateY(-1px)" : "none"
-              }}
-            >
-              {t}
-            </button>
-          ))}
-        </section>
-
-        {/* SIGNAL LIST */}
-        {loading ? (
-          <div style={{ fontSize: 13 }}>Loading signals…</div>
-        ) : filteredSignals.length === 0 ? (
-          <div style={{ opacity: 0.8 }}>No signals</div>
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 10
-            }}
-          >
-            {filteredSignals.map((s) => {
-              const m = s.meta || {};
-
-              return (
-                <article
-                  key={s.id}
-                  style={{
-                    position: "relative",
-                    borderRadius: 14,
-                    padding: 12,
-                    background:
-                      "linear-gradient(135deg, #020617, #020617, #1d2748)",
-                    border: "1px solid rgba(148,163,184,.5)",
-                    boxShadow: "0 14px 36px rgba(15,23,42,0.9)",
-                    transform: "translateY(0)",
-                    transition:
-                      "transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease"
-                  }}
-                  onMouseEnter={(e) => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = "translateY(-3px)";
-                    el.style.boxShadow =
-                      "0 18px 40px rgba(15,23,42,1)";
-                    el.style.borderColor = "rgba(96,165,250,.8)";
-                  }}
-                  onMouseLeave={(e) => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = "translateY(0)";
-                    el.style.boxShadow =
-                      "0 14px 36px rgba(15,23,42,0.9)";
-<<<<<<< HEAD
-                    el.style.borderColor = "rgba(148,163,184,.5)";
-=======
-                    el.style.borderColor =
-                      "rgba(148,163,184,.5)";
->>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
-                  }}
+          <div className="flex flex-wrap gap-2 text-[10px]">
+            {meta.sources &&
+              Object.entries(meta.sources).map(([key, value]) => (
+                <span
+                  key={key}
+                  className={`px-2 py-0.5 rounded-full border ${
+                    value
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-slate-50 text-slate-400"
+                  }`}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontSize: 11,
-                      opacity: 0.8,
-                      marginBottom: 4
-                    }}
-                  >
-                    <span>{TYPE_LABELS[s.type] || s.type}</span>
-
-                    <span
-                      style={{
-                        color: PRIORITY_COLOR[s.confidence] || "#9ca3af"
-                      }}
-                    >
-                      {s.confidence}
-                    </span>
-                  </div>
-
-                  <div style={{ fontSize: 14, margin: "4px 0 6px" }}>
-                    {s.description}
-                  </div>
-
-                  {s.type === "liquidity_migration" && m.eth_value && (
-                    <div style={{ fontSize: 11, marginTop: 4 }}>
-                      Size: {m.eth_value} ETH
-                    </div>
-                  )}
-
-                  {s.type === "active_token" && (
-                    <div style={{ fontSize: 11, marginTop: 4 }}>
-                      {m.token_address?.slice(0, 10)}... · transfers:{" "}
-                      {m.transfer_count}
-                    </div>
-                  )}
-
-                  {m.tx_hash && (
-                    <div style={{ fontSize: 11, marginTop: 6 }}>
-                      <a
-                        href={`https://basescan.org/tx/${m.tx_hash}`}
-                        target="_blank"
-                        style={{
-                          color: "#60a5fa",
-                          textDecoration: "none"
-                        }}
-                      >
-                        view tx
-                      </a>
-                      {" · "}
-                      <button
-                        onClick={() => copy(m.tx_hash)}
-                        style={{
-                          fontSize: 10,
-                          border: "none",
-                          background: "rgba(148,163,184,.2)",
-                          borderRadius: 6,
-                          padding: "2px 6px",
-                          cursor: "pointer"
-                        }}
-                      >
-                        copy
-                      </button>
-                    </div>
-                  )}
-
-                  {m.address && (
-                    <div style={{ fontSize: 11, marginTop: 4 }}>
-                      {m.address}
-                      <button
-                        onClick={() => copy(m.address)}
-                        style={{
-                          marginLeft: 6,
-                          fontSize: 10,
-                          cursor: "pointer"
-                        }}
-                      >
-                        copy
-                      </button>
-                    </div>
-                  )}
-
-                  <div
-                    style={{
-                      fontSize: 10,
-                      opacity: 0.6,
-                      marginTop: 6
-                    }}
-                  >
-                    {s.observed_at}
-                  </div>
-                </article>
-              );
-            })}
+                  {key.toUpperCase()}
+                </span>
+              ))}
           </div>
-        )}
+          <p className="mt-2 text-[10px] text-slate-400">
+            Raw: {meta.total_raw ?? 0} • Shown: {meta.filtered_count ?? 0}
+          </p>
+        </AnimatedCard>
+      </section>
+    </main>
+  );
+}
 
-        <footer
-          style={{
-            fontSize: 10,
-            opacity: 0.6,
-            marginTop: 22,
-            textAlign: "center"
-          }}
-        >
-          On-chain observations only. Not trading advice.
-        </footer>
+// Wallet checker card
+function WalletCheckerCard() {
+  return (
+    <AnimatedCard
+      title="Wallet Check"
+      subtitle="See if a wallet is active in Base Flow"
+      accent="from-cyan-100 via-sky-50 to-emerald-100"
+      border="border-cyan-300"
+      icon={
+        <div className="h-9 w-9 rounded-2xl bg-cyan-500/10 border border-cyan-300 flex items-center justify-center">
+          <span className="text-cyan-600 text-lg">👾</span>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-xs">
+          <input
+            type="text"
+            placeholder="Paste Base address (0x...)"
+            className="flex-1 rounded-xl border border-cyan-200 bg-white/80 px-3 py-2 text-[11px] outline-none focus:ring-2 focus:ring-cyan-300 focus:border-cyan-300"
+          />
+          <button className="rounded-xl bg-cyan-600 text-white px-3 py-2 text-[11px] font-medium active:scale-[0.97] transition-transform">
+            Check
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-400">
+          Coming soon: smart money score, risk flags & token history.
+        </p>
       </div>
+    </AnimatedCard>
+  );
+}
+
+// Reusable animated card
+function AnimatedCard({
+  title,
+  subtitle,
+  accent,
+  border,
+  icon,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  accent: string;
+  border: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`
+        group relative overflow-hidden rounded-3xl border ${border}
+        bg-gradient-to-br ${accent}
+        p-[1px] shadow-sm
+      `}
+    >
+      <div
+        className="
+          relative z-10 rounded-[1.4rem] bg-white/80
+          px-4 py-3 flex flex-col gap-2
+          backdrop-blur-sm
+          transition-transform duration-200 ease-out
+          group-hover:-translate-y-0.5 group-hover:shadow-lg
+        "
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <h2 className="text-[13px] font-semibold tracking-tight">
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="text-[10px] text-slate-500">{subtitle}</p>
+            )}
+          </div>
+          {icon}
+        </div>
+        <div className="pt-1">{children}</div>
+      </div>
+      {/* subtle animated border glow */}
+      <div
+        className="
+          pointer-events-none absolute inset-0 opacity-0
+          group-hover:opacity-100 transition-opacity duration-300
+          bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_60%)]
+        "
+      />
     </div>
   );
 }

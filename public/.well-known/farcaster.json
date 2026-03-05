@@ -1,0 +1,33 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMwNzMzMCwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEIwMzJkM2MzQTc2ZjYyMTZGODRDOUZDNzQzNjQyNjU1QzllMDE3ZjkifQ",
+    "payload": "eyJkb21haW4iOiJiYXNlZmxvLnZlcmNlbC5hcHAifQ",
+    "signature": "eC6hUUV6kyd7XU5ncmGZ65ZS3D9qS6Zo0M5anmp94LhzFo9DO6didvfYe8MYoLdKHv3r+ii4K/1/p63QJBPl3Rs="
+  },
+  
+  "miniapp": {
+    "version": "1",
+    "name": "BaseFlow Signal",
+    "iconUrl": "https://baseflo.vercel.app/hero.png",
+    "homeUrl": "https://baseflo.vercel.app",
+    "imageUrl": "https://baseflo.vercel.app/hero.png",
+    "buttonTitle": "Open Agent",
+    "splashImageUrl": "https://baseflo.vercel.app/hero.png",
+    "splashBackgroundColor": "#050816",
+    "webhookUrl": "https://baseflo.vercel.app/api/webhook",
+    "subtitle": "Signals on Base chain",
+    "description": "Onchain signal mini app for Base: latest blocks, active tokens, new contract deployments, and wallet risk overview.",
+    "screenshotUrls": [
+      "https://baseflo.vercel.app/hero.png"
+    ],
+    "primaryCategory": "finance",
+    "tags": ["signals", "defi", "analytics", "erc8004"],
+    "heroImageUrl": "https://baseflo.vercel.app/hero.png",
+    "tagline": "Onchain signals on Base.",
+    "ogTitle": "BaseFlow Signal Agent",
+    "ogDescription": "Live Base block activity, active tokens, new contracts, and wallet risk overview.",
+    "ogImageUrl": "https://baseflo.vercel.app/hero.png",
+    "castShareUrl": "https://baseflo.vercel.app",
+    "noindex": false
+  }
+}

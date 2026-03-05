@@ -1,0 +1,15 @@
+{
+  "agent": "BaseFlow Signal Agent",
+  "chain": "Base",
+  "updated_at": "2026-02-07T10:30:00Z",
+  "signals": [
+    {
+      "id": "bf-liq-0001",
+      "type": "liquidity_event",
+      "description": "Liquidity added to a newly deployed contract",
+      "confidence": "low",
+      "observed_at": "2026-02-07T10:15:00Z",
+      "source": "onchain_scan"
+    }
+  ]
+}

@@ -1,307 +1,542 @@
-// app/page.tsx
-import Image from "next/image";
-import { Suspense } from "react";
+"use client";
 
-async function fetchSignals() {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL || "https://baseflo.vercel.app";
+import { useEffect, useState } from "react";
 
-  const res = await fetch(`${baseUrl}/api/signals`, {
-    cache: "no-store",
-  });
+type Signal = {
+  id?: string;
+  type: string;
+  category?: string;
+  description?: string;
+  confidence?: string;
+  observed_at?: string;
+  source?: string;
+  wallet?: string;
+  amount?: number;
+  creator?: string;
+  contract?: string;
+  token?: string;
+  tx?: string;
+  meta?: any;
+};
 
-  if (!res.ok) {
-    console.error("Signals API failed", res.status);
-    return { signals: [], meta: {} };
+type TabKey = "all" | "whale" | "deploy" | "volume" | "dex" | "rpc";
+
+const TYPE_LABELS: Record<string, string> = {
+  whale_tx: "Whale",
+  token_deploy: "Token Launch",
+  volume_spike: "Volume",
+  dex_signal: "DEX",
+  rpc_signal: "RPC"
+};
+
+export default function HomePage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
+
+  async function loadSignals() {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/signals", { cache: "no-store" });
+      const json = await res.json();
+      setData(json);
+    } catch (e) {
+      console.error("loadSignals error", e);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  return res.json();
-}
+  useEffect(() => {
+    loadSignals();
+  }, []);
 
-export default async function HomePage() {
-  const data = await fetchSignals();
-  const signals = data.signals || [];
-  const meta = data.meta || {};
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const id = setInterval(() => {
+      loadSignals();
+    }, 15000);
+    return () => clearInterval(id);
+  }, [autoRefresh]);
 
-  const whaleSignals = signals.filter((s: any) => s.type === "whale_tx");
-  const deploySignals = signals.filter((s: any) => s.type === "token_deploy");
-  const volumeSignals = signals.filter((s: any) => s.type === "volume_spike");
+  const signals: Signal[] = data?.signals || [];
+  const meta = data?.meta || {};
+
+  const normalizedSignals = signals.map((s) => {
+    let cat = s.category;
+    if (!cat) {
+      if (s.type === "whale_tx") cat = "whale";
+      else if (s.type === "token_deploy") cat = "deploy";
+      else if (s.type === "volume_spike") cat = "volume";
+      else if (s.type.startsWith("dex")) cat = "dex";
+      else if (s.type.startsWith("rpc")) cat = "rpc";
+    }
+    return { ...s, category: cat };
+  });
+
+  const sortedSignals = [...normalizedSignals].sort((a, b) => {
+    const ta = a.observed_at ? new Date(a.observed_at).getTime() : 0;
+    const tb = b.observed_at ? new Date(b.observed_at).getTime() : 0;
+    return tb - ta;
+  });
+
+  const filteredSignals =
+    activeTab === "all"
+      ? sortedSignals
+      : sortedSignals.filter((s) => s.category === activeTab);
+
+  const whales = normalizedSignals.filter((s) => s.category === "whale");
+  const deploys = normalizedSignals.filter((s) => s.category === "deploy");
+  const volumes = normalizedSignals.filter((s) => s.category === "volume");
+  const dex = normalizedSignals.filter((s) => s.category === "dex");
+  const rpc = normalizedSignals.filter((s) => s.category === "rpc");
 
   return (
-    <main className="min-h-screen bg-white text-slate-900 flex flex-col items-center">
-      {/* Top hero */}
-      <section className="w-full max-w-md sm:max-w-2xl px-4 pt-6 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="relative h-10 w-10 rounded-2xl border border-sky-200 bg-sky-50 shadow-[0_0_0_4px_rgba(56,189,248,0.2)] overflow-hidden">
-            <Image
-              src="/hero.png"
-              alt="BaseFlow Signal"
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">
-              BASE FLOW SIGNAL
-            </h1>
-            <p className="text-xs text-slate-500">
-              Live whales, deploys & volume on Base
-            </p>
-          </div>
-        </div>
+    <div
+      style={{
+        width: "100vw",
+        maxWidth: 430,
+        minHeight: "100vh",
+        padding: 16,
+        fontFamily: "system-ui",
+        background:
+          "radial-gradient(circle at top, #020617 0, #020617 35%, #000814 80%)",
+        color: "#e5e7eb",
+        position: "relative",
+        margin: "0 auto",
+        overflow: "hidden"
+      }}
+    >
+      {/* soft background glow */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background:
+            "radial-gradient(circle at 0% 0%, rgba(56,189,248,0.2), transparent 55%), radial-gradient(circle at 100% 100%, rgba(34,197,94,0.18), transparent 55%)",
+          opacity: 0.45,
+          filter: "blur(40px)"
+        }}
+      />
 
-        {/* mini app / farcaster friendly header actions */}
-        <div className="mt-4 flex gap-2">
-          <button className="flex-1 text-xs font-medium rounded-full bg-slate-900 text-white py-2 shadow-md active:scale-[0.97] transition-transform">
-            Open in Mini App
-          </button>
-          <button className="flex-1 text-xs font-medium rounded-full border border-slate-200 text-slate-700 py-2 bg-white shadow-sm active:scale-[0.97] transition-transform">
-            View on Farcaster
-          </button>
-        </div>
-      </section>
-
-      {/* Cards grid */}
-      <section className="w-full max-w-md sm:max-w-2xl px-4 pb-10 space-y-4">
-        {/* Wallet checker */}
-        <WalletCheckerCard />
-
-        {/* Whale card */}
-        <AnimatedCard
-          title="Whale Activity"
-          subtitle="High value moves on Base"
-          accent="from-sky-100 via-cyan-50 to-blue-100"
-          border="border-sky-300"
-          icon={
-            <div className="h-9 w-9 rounded-2xl bg-sky-500/10 border border-sky-300 flex items-center justify-center animate-pulse">
-              <span className="text-sky-600 text-lg">🐋</span>
-            </div>
-          }
-        >
-          <ul className="space-y-2">
-            {whaleSignals.slice(0, 4).map((w: any, i: number) => (
-              <li
-                key={w.tx}
-                className="flex items-center justify-between text-xs"
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {/* HEADER */}
+        <header style={{ marginBottom: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 10
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "999px",
+                  overflow: "hidden",
+                  border: "1px solid rgba(148,163,184,.6)",
+                  background:
+                    "radial-gradient(circle at 30% 0%, #0b1120, #020617 70%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
               >
-                <div className="flex flex-col">
-                  <span className="font-medium text-slate-800">
-                    {w.amount.toFixed(2)} ETH
-                  </span>
-                  <span className="text-[10px] text-slate-500 truncate max-w-[200px]">
-                    {w.wallet}
-                  </span>
+                <img
+                  src="/hero.png"
+                  alt="BaseFlow"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover"
+                  }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  BASE FLOW SIGNAL
                 </div>
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-white/70 border border-sky-200 px-2 py-0.5 text-[10px] text-sky-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  Whale
+                <span style={{ fontSize: 11, opacity: 0.7 }}>
+                  Live signals from Base chain
                 </span>
-              </li>
-            ))}
-            {whaleSignals.length === 0 && (
-              <p className="text-xs text-slate-400">
-                No whales spotted in the latest block.
-              </p>
-            )}
-          </ul>
-        </AnimatedCard>
-
-        {/* Deploy card */}
-        <AnimatedCard
-          title="Fresh Deploys"
-          subtitle="New tokens appearing right now"
-          accent="from-violet-100 via-indigo-50 to-fuchsia-100"
-          border="border-violet-300"
-          icon={
-            <div className="h-9 w-9 rounded-2xl bg-violet-500/10 border border-violet-300 flex items-center justify-center animate-spin-slow">
-              <span className="text-violet-600 text-lg">✨</span>
+              </div>
             </div>
-          }
-        >
-          <ul className="space-y-2">
-            {deploySignals.slice(0, 4).map((d: any) => (
-              <li
-                key={d.contract}
-                className="flex items-center justify-between text-xs"
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium text-slate-800 truncate max-w-[180px]">
-                    {d.contract}
-                  </span>
-                  <span className="text-[10px] text-slate-500 truncate max-w-[180px]">
-                    by {d.creator}
-                  </span>
-                </div>
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-white/70 border border-violet-200 px-2 py-0.5 text-[10px] text-violet-700">
-                  🧬 New token
-                </span>
-              </li>
-            ))}
-            {deploySignals.length === 0 && (
-              <p className="text-xs text-slate-400">
-                No fresh deploys in the latest scan.
-              </p>
-            )}
-          </ul>
-        </AnimatedCard>
 
-        {/* Volume spikes */}
-        <AnimatedCard
-          title="Volume Spikes"
-          subtitle="Unusual on-chain volume"
-          accent="from-amber-100 via-orange-50 to-rose-100"
-          border="border-amber-300"
-          icon={
-            <div className="h-9 w-9 rounded-2xl bg-amber-500/10 border border-amber-300 flex items-center justify-center">
-              <span className="text-amber-600 text-lg animate-bounce">📈</span>
-            </div>
-          }
-        >
-          <ul className="space-y-2">
-            {volumeSignals.slice(0, 4).map((v: any) => (
-              <li key={v.id || v.tx || Math.random()} className="text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-slate-800">
-                    {v.amount.toLocaleString()} USD
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    {v.token || "Unknown token"}
-                  </span>
-                </div>
-              </li>
-            ))}
-            {volumeSignals.length === 0 && (
-              <p className="text-xs text-slate-400">
-                No abnormal volume in the latest window.
-              </p>
-            )}
-          </ul>
-        </AnimatedCard>
+            <button
+              onClick={() => setAutoRefresh((v) => !v)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                padding: "5px 12px",
+                borderRadius: 999,
+                border: "1px solid rgba(56,189,248,.7)",
+                background: autoRefresh
+                  ? "linear-gradient(135deg, rgba(56,189,248,.25), rgba(37,99,235,.3))"
+                  : "transparent",
+                color: autoRefresh ? "#e0f2fe" : "#9ca3af",
+                cursor: "pointer",
+                boxShadow: autoRefresh
+                  ? "0 0 16px rgba(56,189,248,0.6)"
+                  : "none",
+                transition:
+                  "background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease"
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "999px",
+                  backgroundColor: autoRefresh ? "#22c55e" : "#6b7280",
+                  boxShadow: autoRefresh
+                    ? "0 0 10px rgba(34,197,94,0.8)"
+                    : "none"
+                }}
+              />
+              {autoRefresh ? "LIVE" : "PAUSED"}
+            </button>
+          </div>
 
-        {/* Meta / status */}
-        <AnimatedCard
-          title="Feed Status"
-          subtitle="BaseFlow health check"
-          accent="from-slate-100 via-slate-50 to-sky-50"
-          border="border-slate-200"
-          icon={
-            <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 border border-emerald-300 flex items-center justify-center">
-              <span className="text-emerald-600 text-lg">✅</span>
-            </div>
-          }
+          <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>
+            Network: Base · Signals:{" "}
+            <strong>{meta.filtered_count ?? signals.length}</strong>
+          </div>
+        </header>
+
+        {/* SUMMARY */}
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+            marginBottom: 12,
+            fontSize: 11
+          }}
         >
-          <div className="flex flex-wrap gap-2 text-[10px]">
-            {meta.sources &&
-              Object.entries(meta.sources).map(([key, value]) => (
-                <span
-                  key={key}
-                  className={`px-2 py-0.5 rounded-full border ${
-                    value
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-slate-200 bg-slate-50 text-slate-400"
-                  }`}
+          <MiniStat label="Whales" value={whales.length} icon="🐋" />
+          <MiniStat label="Deploys" value={deploys.length} icon="🧬" />
+          <MiniStat label="Volume" value={volumes.length} icon="📈" />
+          <MiniStat label="DEX/RPC" value={dex.length + rpc.length} icon="⚙️" />
+        </section>
+
+        {/* FILTER TABS */}
+        <section
+          style={{
+            display: "flex",
+            gap: 6,
+            marginBottom: 12,
+            padding: 4,
+            borderRadius: 999,
+            background: "rgba(15,23,42,0.9)",
+            border: "1px solid rgba(31,41,55,.9)"
+          }}
+        >
+          {[
+            { k: "all", label: "All" },
+            { k: "whale", label: "Whales" },
+            { k: "deploy", label: "Deploys" },
+            { k: "volume", label: "Volume" },
+            { k: "dex", label: "DEX" },
+            { k: "rpc", label: "RPC" }
+          ].map((t) => (
+            <button
+              key={t.k}
+              onClick={() => setActiveTab(t.k as TabKey)}
+              style={{
+                padding: "5px 10px",
+                borderRadius: 999,
+                border: "none",
+                background:
+                  activeTab === t.k
+                    ? "linear-gradient(135deg,#38bdf8,#0ea5e9)"
+                    : "transparent",
+                fontSize: 11,
+                color: activeTab === t.k ? "#0b1120" : "#9ca3af",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transform: activeTab === t.k ? "translateY(-1px)" : "none",
+                transition:
+                  "background 0.15s ease, color 0.15s ease, transform 0.1s ease"
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </section>
+
+        {/* SIGNAL LIST */}
+        {loading ? (
+          <div style={{ fontSize: 13 }}>Loading signals…</div>
+        ) : filteredSignals.length === 0 ? (
+          <div style={{ fontSize: 12, opacity: 0.8 }}>
+            No signals in this window.
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              marginBottom: 16
+            }}
+          >
+            {filteredSignals.map((s, idx) => {
+              const isWhale = s.category === "whale";
+              const isDeploy = s.category === "deploy";
+              const isVolume = s.category === "volume";
+
+              const title =
+                s.type === "whale_tx"
+                  ? "Whale Transaction"
+                  : s.type === "token_deploy"
+                  ? "New Token Deploy"
+                  : s.type === "volume_spike"
+                  ? "Volume Spike"
+                  : TYPE_LABELS[s.type] || s.type;
+
+              const card = {
+                borderColor: isWhale
+                  ? "rgba(56,189,248,.8)"
+                  : isDeploy
+                  ? "rgba(129,140,248,.8)"
+                  : isVolume
+                  ? "rgba(234,179,8,.8)"
+                  : "rgba(30,64,175,.7)"
+              };
+
+              return (
+                <article
+                  key={s.id || s.tx || idx}
+                  style={{
+                    borderRadius: 16,
+                    padding: 12,
+                    background:
+                      "linear-gradient(135deg, #020617, #020617, #0f172a)",
+                    border: `1px solid ${card.borderColor}`,
+                    boxShadow: "0 12px 30px rgba(15,23,42,0.9)",
+                    transform: "translateY(0)",
+                    transition:
+                      "transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = "translateY(-3px)";
+                    el.style.boxShadow =
+                      "0 18px 40px rgba(15,23,42,1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = "translateY(0)";
+                    el.style.boxShadow =
+                      "0 12px 30px rgba(15,23,42,0.9)";
+                  }}
                 >
-                  {key.toUpperCase()}
+                  {/* header row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontSize: 12
+                      }}
+                    >
+                      <span>
+                        {isWhale && "🐋"}
+                        {isDeploy && "🧬"}
+                        {isVolume && "📈"}
+                        {!isWhale && !isDeploy && !isVolume && "🔍"}
+                      </span>
+                      <span>{title}</span>
+                    </div>
+                    {s.confidence && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color:
+                            s.confidence === "high"
+                              ? "#22c55e"
+                              : s.confidence === "medium"
+                              ? "#eab308"
+                              : "#9ca3af"
+                        }}
+                      >
+                        {s.confidence}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* main body */}
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>
+                    {s.description ||
+                      (isWhale &&
+                        `${(s.amount || 0).toFixed(2)} ETH whale move`) ||
+                      (isDeploy && `New token deployed: ${s.contract}`) ||
+                      (isVolume &&
+                        `Volume spike: ${s.amount?.toLocaleString()} USD`) ||
+                      ""}
+                  </div>
+
+                  {/* details */}
+                  <div style={{ fontSize: 11, opacity: 0.85 }}>
+                    {s.wallet && (
+                      <div>
+                        Wallet:{" "}
+                        <span style={{ fontFamily: "monospace" }}>
+                          {s.wallet.slice(0, 10)}...
+                        </span>
+                      </div>
+                    )}
+
+                    {s.creator && (
+                      <div>
+                        Creator:{" "}
+                        <span style={{ fontFamily: "monospace" }}>
+                          {s.creator.slice(0, 10)}...
+                        </span>
+                      </div>
+                    )}
+
+                    {s.contract && (
+                      <div>
+                        Token:{" "}
+                        <span style={{ fontFamily: "monospace" }}>
+                          {s.contract.slice(0, 10)}...
+                        </span>
+                      </div>
+                    )}
+
+                    {s.tx && (
+                      <div style={{ marginTop: 4 }}>
+                        <a
+                          href={`https://basescan.org/tx/${s.tx}`}
+                          target="_blank"
+                          style={{
+                            color: "#38bdf8",
+                            textDecoration: "none",
+                            fontSize: 11
+                          }}
+                        >
+                          View on Basescan ↗
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {s.observed_at && (
+                    <div
+                      style={{
+                        fontSize: 10,
+                        opacity: 0.6,
+                        marginTop: 6
+                      }}
+                    >
+                      {s.observed_at}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {/* FEED STATUS */}
+        <section
+          style={{
+            fontSize: 11,
+            borderRadius: 16,
+            padding: 10,
+            background: "rgba(15,23,42,0.94)",
+            border: "1px solid rgba(31,41,55,.95)",
+            boxShadow: "0 10px 26px rgba(15,23,42,0.9)"
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: 6
+            }}
+          >
+            <span>Feed Status</span>
+            <span
+              style={{
+                fontSize: 10,
+                color: meta.filtered_count ? "#22c55e" : "#f97316"
+              }}
+            >
+              {meta.filtered_count ? "Active" : "Idle"}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+            {meta.sources &&
+              Object.entries(meta.sources).map(([k, v]) => (
+                <span
+                  key={k}
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(55,65,81,.9)",
+                    background: v ? "rgba(34,197,94,0.12)" : "transparent",
+                    color: v ? "#bbf7d0" : "#9ca3af",
+                    fontSize: 10
+                  }}
+                >
+                  {k.toUpperCase()}
                 </span>
               ))}
           </div>
-          <p className="mt-2 text-[10px] text-slate-400">
-            Raw: {meta.total_raw ?? 0} • Shown: {meta.filtered_count ?? 0}
-          </p>
-        </AnimatedCard>
-      </section>
-    </main>
-  );
-}
 
-// Wallet checker card
-function WalletCheckerCard() {
-  return (
-    <AnimatedCard
-      title="Wallet Check"
-      subtitle="See if a wallet is active in Base Flow"
-      accent="from-cyan-100 via-sky-50 to-emerald-100"
-      border="border-cyan-300"
-      icon={
-        <div className="h-9 w-9 rounded-2xl bg-cyan-500/10 border border-cyan-300 flex items-center justify-center">
-          <span className="text-cyan-600 text-lg">👾</span>
-        </div>
-      }
-    >
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-xs">
-          <input
-            type="text"
-            placeholder="Paste Base address (0x...)"
-            className="flex-1 rounded-xl border border-cyan-200 bg-white/80 px-3 py-2 text-[11px] outline-none focus:ring-2 focus:ring-cyan-300 focus:border-cyan-300"
-          />
-          <button className="rounded-xl bg-cyan-600 text-white px-3 py-2 text-[11px] font-medium active:scale-[0.97] transition-transform">
-            Check
-          </button>
-        </div>
-        <p className="text-[10px] text-slate-400">
-          Coming soon: smart money score, risk flags & token history.
-        </p>
+          <div style={{ fontSize: 10, opacity: 0.6, marginTop: 6 }}>
+            Raw: {meta.total_raw ?? 0} · Shown: {meta.filtered_count ?? 0}
+          </div>
+        </section>
       </div>
-    </AnimatedCard>
+    </div>
   );
 }
 
-// Reusable animated card
-function AnimatedCard({
-  title,
-  subtitle,
-  accent,
-  border,
-  icon,
-  children,
+function MiniStat({
+  label,
+  value,
+  icon
 }: {
-  title: string;
-  subtitle?: string;
-  accent: string;
-  border: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
+  label: string;
+  value: number;
+  icon: string;
 }) {
   return (
     <div
-      className={`
-        group relative overflow-hidden rounded-3xl border ${border}
-        bg-gradient-to-br ${accent}
-        p-[1px] shadow-sm
-      `}
+      style={{
+        padding: 8,
+        borderRadius: 12,
+        background: "rgba(15,23,42,0.96)",
+        border: "1px solid rgba(31,41,55,.9)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        boxShadow: "0 8px 20px rgba(15,23,42,0.9)"
+      }}
     >
-      <div
-        className="
-          relative z-10 rounded-[1.4rem] bg-white/80
-          px-4 py-3 flex flex-col gap-2
-          backdrop-blur-sm
-          transition-transform duration-200 ease-out
-          group-hover:-translate-y-0.5 group-hover:shadow-lg
-        "
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <h2 className="text-[13px] font-semibold tracking-tight">
-              {title}
-            </h2>
-            {subtitle && (
-              <p className="text-[10px] text-slate-500">{subtitle}</p>
-            )}
-          </div>
-          {icon}
-        </div>
-        <div className="pt-1">{children}</div>
-      </div>
-      {/* subtle animated border glow */}
-      <div
-        className="
-          pointer-events-none absolute inset-0 opacity-0
-          group-hover:opacity-100 transition-opacity duration-300
-          bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_60%)]
-        "
-      />
+      <span style={{ fontSize: 11, opacity: 0.75 }}>
+        {icon} {label}
+      </span>
+      <span style={{ fontSize: 14, fontWeight: 600 }}>{value}</span>
     </div>
   );
 }

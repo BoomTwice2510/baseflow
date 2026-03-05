@@ -3,12 +3,18 @@ import Image from "next/image";
 import { Suspense } from "react";
 
 async function fetchSignals() {
-  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!;
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL || "https://baseflo.vercel.app";
 
-const res = await fetch(`${BASE_URL}/api/signals`, {
+  const res = await fetch(`${baseUrl}/api/signals`, {
     cache: "no-store",
   });
-  if (!res.ok) throw new Error("Failed to load signals");
+
+  if (!res.ok) {
+    console.error("Signals API failed", res.status);
+    return { signals: [], meta: {} };
+  }
+
   return res.json();
 }
 

@@ -8,7 +8,11 @@ type Signal = {
   type: string;
   category?: string;
   description: string;
+<<<<<<< HEAD
   confidence: "high" | "medium" | "low" | string;
+=======
+  confidence: string;
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
   observed_at: string;
   source: string;
   note?: string;
@@ -17,6 +21,7 @@ type Signal = {
 
 type TabKey = "all" | "liq" | "vol" | "deploy" | "block";
 
+<<<<<<< HEAD
 type ApiResponse = {
   agent: string;
   chain: string;
@@ -36,6 +41,8 @@ type ApiResponse = {
   signals: Signal[];
 };
 
+=======
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
 const TYPE_LABELS: Record<string, string> = {
   liquidity_event: "Liquidity",
   liquidity_migration: "Liquidity",
@@ -58,7 +65,11 @@ const PRIORITY_COLOR: Record<string, string> = {
 };
 
 export default function HomePage() {
+<<<<<<< HEAD
   const [data, setData] = useState<ApiResponse | null>(null);
+=======
+  const [data, setData] = useState<any>(null);
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
@@ -74,8 +85,13 @@ export default function HomePage() {
       if (addr) params.set("address", addr);
 
       const url = "/api/signals" + (params.toString() ? `?${params}` : "");
+<<<<<<< HEAD
       const res = await fetch(url, { cache: "no-store" });
       const json = (await res.json()) as ApiResponse;
+=======
+      const res = await fetch(url);
+      const json = await res.json();
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
 
       setData(json);
     } catch (e) {
@@ -100,11 +116,15 @@ export default function HomePage() {
   }, [autoRefresh]);
 
   useEffect(() => {
+<<<<<<< HEAD
     // Farcaster Mini App splash hide
     sdk?.actions
       ?.ready()
       .then(() => {})
       .catch(() => {});
+=======
+    sdk.actions.ready().catch(() => {});
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
   }, []);
 
   const signals: Signal[] = data?.signals || [];
@@ -150,12 +170,17 @@ export default function HomePage() {
     tokens: signals.filter((s) => s.type === "active_token").length
   };
 
+<<<<<<< HEAD
   async function copy(v: string) {
     try {
       await navigator.clipboard.writeText(v);
     } catch (err) {
       console.error("clipboard error", err);
     }
+=======
+  function copy(v: string) {
+    navigator.clipboard.writeText(v);
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
   }
 
   return (
@@ -560,7 +585,11 @@ export default function HomePage() {
             </div>
 
             <button
+<<<<<<< HEAD
               onClick={() => loadSignals(address)}
+=======
+              onClick={() => loadSignals()}
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
               style={{
                 background:
                   "linear-gradient(135deg,#2563eb,#4f46e5,#7c3aed)",
@@ -744,7 +773,12 @@ export default function HomePage() {
                     el.style.transform = "translateY(0)";
                     el.style.boxShadow =
                       "0 14px 36px rgba(15,23,42,0.9)";
+<<<<<<< HEAD
                     el.style.borderColor = "rgba(148,163,184,.5)";
+=======
+                    el.style.borderColor =
+                      "rgba(148,163,184,.5)";
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
                   }}
                 >
                   <div

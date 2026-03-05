@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+<<<<<<< HEAD
     "start": "next start",
     "tg:test": "node -r dotenv/config scripts/test-telegram.mjs",
   "signal:telegram": "node -r dotenv/config scripts/signal-telegram-worker.mjs"
@@ -16,6 +17,16 @@
     "node-fetch": "^3.3.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
+=======
+    "start": "next start"
+  },
+  "dependencies": {
+    "@farcaster/miniapp-sdk": "^0.2.3",
+    "ethers": "^6.16.0",
+    "next": "14.1.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

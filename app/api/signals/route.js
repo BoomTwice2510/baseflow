@@ -24,7 +24,11 @@ const AGENT_8004_ID = 2387;
 // CONFIG
 // =======================
 
+<<<<<<< HEAD
 const LOOKBACK_BLOCKS = 120;
+=======
+const LOOKBACK_BLOCKS = 20;
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
 const WHALE_THRESHOLD_USD = 100000;
 const LIQUIDITY_MOVE_ETH = 10;
 
@@ -48,7 +52,11 @@ let lastPriceFetch = 0;
 async function getETHPrice() {
   const now = Date.now();
 
+<<<<<<< HEAD
   if (cachedETHPrice && now - lastPriceFetch < 180000)
+=======
+  if (cachedETHPrice && now - lastPriceFetch < 60000)
+>>>>>>> 137cd21dcbeba778ec199b39c332d126c82dc60e
     return cachedETHPrice;
 
   try {

@@ -1,4 +1,3 @@
-import { getDexPairs } from "../../../services/dexscreener.js"
 import { getGasPrice } from "../../../services/baseRpc.js"
 import { getNewPools } from "../../../services/uniswap.js"
 import { scanBaseBlocks } from "../../../services/rpcScanner.js"
@@ -26,10 +25,6 @@ export async function GET() {
       volumes,
       uniPools
     ] = await Promise.all([
-
-      getDexPairs().catch(e => {
-        return { error: e.message }
-      }),
 
       getGasPrice().catch(e => {
         return { error: e.message }

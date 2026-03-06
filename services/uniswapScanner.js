@@ -1,8 +1,5 @@
+import { provider } from "./baseRpc.js"
 import { ethers } from "ethers"
-
-const provider = new ethers.JsonRpcProvider(
-  process.env.BASE_RPC_URL || "https://base.llamarpc.com"
-)
 
 const FACTORY = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD"
 
@@ -24,13 +21,15 @@ export async function scanUniswapPools() {
 
     const latest = await provider.getBlockNumber()
 
-    const fromBlock = latest - 20
+    if(!lastBlock){
+      lastBlock = latest - 20
+    }
 
     const filter = contract.filters.PoolCreated()
 
     const events = await contract.queryFilter(
       filter,
-      fromBlock,
+      lastBlock,
       latest
     )
 
@@ -44,15 +43,15 @@ export async function scanUniswapPools() {
 
         type: "uniswap_pool_created",
 
-        token0: e.args.token0,
-
-        token1: e.args.token1,
-
-        pool: e.args.pool
+        token0: e.args.token0.toLowerCase(),
+        token1: e.args.token1.toLowerCase(),
+        pool: e.args.pool.toLowerCase()
 
       })
 
     })
+
+    lastBlock = latest
 
     return signals
 

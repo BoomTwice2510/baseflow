@@ -15,9 +15,11 @@ export async function getNewPools(){
 
   const latest = await provider.getBlockNumber()
 
+  const fromBlock = Math.max(latest - 20, 0)
+
   const logs = await provider.getLogs({
    address: FACTORY,
-   fromBlock: latest-20,
+   fromBlock,
    toBlock: latest,
    topics: [topic]
   })
@@ -29,10 +31,10 @@ export async function getNewPools(){
    const parsed = iface.parseLog(log)
 
    pools.push({
-    type:"new_pool",
-    token0: parsed.args.token0,
-    token1: parsed.args.token1,
-    pool: parsed.args.pool
+    type:"uniswap_pool_created",
+    token0: parsed.args.token0.toLowerCase(),
+    token1: parsed.args.token1.toLowerCase(),
+    pool: parsed.args.pool.toLowerCase()
    })
 
   })

@@ -8,27 +8,27 @@ export function buildSignals({ pairs = [], gas = {}, pools = [] }) {
 
   const gasPrice = gas?.gas || 0
 
-
   pairs.forEach(pair => {
 
     const base = pair?.baseToken?.symbol?.toUpperCase()
+    const baseAddress = pair?.baseToken?.address
     const quote = pair?.quoteToken?.symbol?.toUpperCase()
 
-    if (!base) return
+    if (!base || !baseAddress) return
 
     if (blacklist.includes(base) || blacklist.includes(quote)) return
 
-    if (seenTokens.has(base)) return
-    seenTokens.add(base)
+    if (seenTokens.has(baseAddress)) return
+    seenTokens.add(baseAddress)
 
     const liquidity = pair?.liquidity?.usd || 0
     const volume = pair?.volume?.h24 || 0
 
-    if (liquidity > 50000 && liquidity < 10000000) {
+    if (liquidity > 200000 && liquidity < 2000000) {
 
       signals.push({
         type: "liquidity_added",
-        token: base,
+        token: baseAddress,
         liquidity
       })
 
@@ -38,7 +38,7 @@ export function buildSignals({ pairs = [], gas = {}, pools = [] }) {
 
       signals.push({
         type: "volume_spike",
-        token: base,
+        token: baseAddress,
         volume
       })
 
@@ -46,8 +46,7 @@ export function buildSignals({ pairs = [], gas = {}, pools = [] }) {
 
   })
 
-
-  if (gasPrice > 1000000000) {
+  if (gasPrice > 5e9) {
 
     signals.push({
       type: "gas_spike",
@@ -55,7 +54,6 @@ export function buildSignals({ pairs = [], gas = {}, pools = [] }) {
     })
 
   }
-
 
   pools.forEach(pool => {
 
@@ -68,7 +66,5 @@ export function buildSignals({ pairs = [], gas = {}, pools = [] }) {
 
   })
 
-
   return signals
-
 }

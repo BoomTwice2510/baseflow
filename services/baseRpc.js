@@ -13,7 +13,7 @@ export async function getGasPrice() {
     const fee = await provider.getFeeData()
 
     return {
-      gas: Number(fee.gasPrice || 0)
+      gas: Number(fee.gasPrice || fee.maxFeePerGas || 0)
     }
 
   } catch (err) {

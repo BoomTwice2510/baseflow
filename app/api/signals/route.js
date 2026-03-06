@@ -1,4 +1,3 @@
-import { getDexPairs } from "../../../services/dexscreener.js"
 import { getGasPrice } from "../../../services/baseRpc.js"
 import { getNewPools } from "../../../services/uniswap.js"
 import { scanBaseBlocks } from "../../../services/rpcScanner.js"
@@ -7,11 +6,15 @@ import { scanUniswapPools } from "../../../services/uniswapScanner.js"
 import {
   getWhaleSignals,
   getDeploySignals,
-  getVolumeSignals
+  getVolumeSignals,
+  getSmartMoneySignals,
+  getMultiWhaleSignals,
+  getHolderSpikeSignals
 } from "../../../services/dune.js"
 
 import { buildSignals } from "../../../engine/signalEngine.js"
 import { scoreSignal } from "../../../engine/signalScore.js"
+import { applySignalCorrelation } from "../../../engine/correlationEngine.js"
 
 import {
   getCache,
@@ -38,7 +41,7 @@ export async function GET(request) {
     const MAX_VOLUME = parseInt(process.env.MAX_VOLUME_SIGNALS || "5")
     const MAX_RPC = parseInt(process.env.MAX_RPC_SIGNALS || "5")
     const MAX_POOLS = parseInt(process.env.MAX_POOL_SIGNALS || "5")
-    const MAX_FINAL = parseInt(process.env.MAX_FINAL_SIGNALS || "20")
+    const MAX_FINAL = parseInt(process.env.MAX_FINAL_SIGNALS || "25")
 
     const VOLUME_THRESHOLD =
       parseFloat(process.env.VOLUME_THRESHOLD || "100000")
@@ -57,7 +60,6 @@ export async function GET(request) {
       parseInt(searchParams.get("limit") || MAX_FINAL.toString())
 
     // ================= FETCH =================
-    let pairs = []
     let gas = {}
     let pools = []
     let rpcSignals = []
@@ -65,10 +67,11 @@ export async function GET(request) {
     let deploySignals = []
     let volumeSignals = []
     let poolSignals = []
+    let smartMoneySignals = []
+    let multiWhaleSignals = []
+    let holderSpikeSignals = []
 
     const fetches = [
-
-      getDexPairs().catch(() => []),
 
       getGasPrice().catch(() => ({})),
 
@@ -82,33 +85,35 @@ export async function GET(request) {
 
       getVolumeSignals().catch(() => []),
 
-      scanUniswapPools().catch(() => [])
+      scanUniswapPools().catch(() => []),
+
+      getSmartMoneySignals().catch(() => []),
+
+      getMultiWhaleSignals().catch(() => []),
+
+      getHolderSpikeSignals().catch(() => [])
 
     ]
 
     ;[
-      pairs,
       gas,
       pools,
       rpcSignals,
       whaleSignals,
       deploySignals,
       volumeSignals,
-      poolSignals
+      poolSignals,
+      smartMoneySignals,
+      multiWhaleSignals,
+      holderSpikeSignals
     ] = await Promise.all(fetches)
-
-    // ================= BUILD DEX SIGNALS =================
-    const dexSignals = buildSignals({
-      pairs,
-      gas,
-      pools
-    })
 
     // ================= WHALE FILTER =================
     const seenWallets = new Set()
 
     const whaleFiltered =
       whaleSignals
+        .sort((a,b) => (b.amount || 0) - (a.amount || 0))
         .filter(w => {
 
           if (!w.wallet) return false
@@ -131,10 +136,10 @@ export async function GET(request) {
         )
         .slice(0, MAX_DEPLOY)
 
-    // ================= VOLUME FILTER =================
+    // ================= VOLUME FILTER (BUG FIXED) =================
     const volumeFiltered =
       volumeSignals
-        .filter(v => v.volume > VOLUME_THRESHOLD)
+        .filter(v => v.amount > VOLUME_THRESHOLD)
         .slice(0, MAX_VOLUME)
 
     // ================= POOL FILTER =================
@@ -144,8 +149,6 @@ export async function GET(request) {
     // ================= MERGE =================
     let signals = [
 
-      ...dexSignals,
-
       ...rpcSignals.slice(0, MAX_RPC),
 
       ...whaleFiltered,
@@ -154,7 +157,13 @@ export async function GET(request) {
 
       ...volumeFiltered,
 
-      ...poolFiltered
+      ...poolFiltered,
+
+      ...smartMoneySignals,
+
+      ...multiWhaleSignals,
+
+      ...holderSpikeSignals
 
     ]
 
@@ -164,11 +173,11 @@ export async function GET(request) {
     signals = signals.filter(s => {
 
       const key =
-        s.tx ||
-        s.contract ||
-        s.pool ||
-        s.wallet ||
-        JSON.stringify(s)
+  s.tx ||
+  s.contract ||
+  s.token ||
+  s.pool ||
+  JSON.stringify(s)
 
       if (seen.has(key)) return false
 
@@ -185,23 +194,26 @@ export async function GET(request) {
       score: scoreSignal(s)
     }))
 
+    signals = applySignalCorrelation(signals)
+
     // ===== SORT BY SCORE =====
 
-    signals.sort((a, b) => b.score - a.score)
-
-    // ================= LIMIT =================
-    signals = signals.slice(0, limit)
+   signals = signals
+  .sort((a, b) => b.score - a.score)
+  .slice(0, limit)
 
     // ================= DEBUG =================
     if(process.env.DEBUG === "true"){
 
  console.log("SIGNAL DEBUG:",{
-  dexSignals: dexSignals.length,
   rpcSignals: rpcSignals.length,
   whaleSignals: whaleSignals.length,
   deploySignals: deploySignals.length,
   volumeSignals: volumeSignals.length,
-  poolSignals: poolSignals.length
+  poolSignals: poolSignals.length,
+  smartMoneySignals: smartMoneySignals.length,
+  multiWhaleSignals: multiWhaleSignals.length,
+  holderSpikeSignals: holderSpikeSignals.length
  })
 
 }
@@ -222,8 +234,6 @@ export async function GET(request) {
 
       sources: {
 
-        dex: dexSignals.length > 0,
-
         rpc: rpcSignals.length > 0,
 
         whale: whaleSignals.length > 0,
@@ -232,17 +242,25 @@ export async function GET(request) {
 
         volume: volumeSignals.length > 0,
 
-        pools: poolSignals.length > 0
+        pools: poolSignals.length > 0,
+
+        smart_money: smartMoneySignals.length > 0,
+
+        multi_whale: multiWhaleSignals.length > 0,
+
+        holder_spike: holderSpikeSignals.length > 0
 
       },
 
       total_raw:
-        dexSignals.length +
         rpcSignals.length +
         whaleSignals.length +
         deploySignals.length +
         volumeSignals.length +
-        poolSignals.length,
+        poolSignals.length +
+        smartMoneySignals.length +
+        multiWhaleSignals.length +
+        holderSpikeSignals.length,
 
       filtered_count: signals.length,
 

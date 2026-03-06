@@ -13,10 +13,9 @@ out
 
 # misc
 *.log
-<<<<<<< HEAD
 
 # env files
 .env
 .env.local
 .env.*.local
-=======
+

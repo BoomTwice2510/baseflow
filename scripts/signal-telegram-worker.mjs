@@ -9,66 +9,104 @@ const STORE_FILE = "./sent-signals.json"
 
 let sent = []
 
+// load already sent signals
 if (fs.existsSync(STORE_FILE)) {
- sent = JSON.parse(fs.readFileSync(STORE_FILE))
+  try {
+    sent = JSON.parse(fs.readFileSync(STORE_FILE))
+  } catch {
+    sent = []
+  }
 }
 
-function getId(s){
-
- return s.tx || s.contract || s.wallet + s.amount
-
+function getId(s) {
+  return s.tx || s.contract || `${s.wallet}-${s.amount}`
 }
 
-function formatSignal(s){
+function formatSignal(s) {
 
- let msg = `⚡ ${s.type}\n`
+  if (s.type === "whale_tx") {
+    return `🐋 WHALE MOVE
 
- if(s.wallet) msg += `👛 ${s.wallet}\n`
- if(s.amount) msg += `💰 ${s.amount}\n`
- if(s.contract) msg += `🪙 ${s.contract}\n`
- if(s.tx) msg += `🔗 https://basescan.org/tx/${s.tx}\n`
+💰 ${Number(s.amount).toFixed(2)} ETH
+👛 ${s.wallet?.slice(0,10)}...
 
- return msg
+🔗 https://basescan.org/tx/${s.tx}
 
+⚡ BaseFlow`
+  }
+
+  if (s.type === "token_deploy") {
+    return `🪙 NEW TOKEN DEPLOYED
+
+🏗 Creator
+${s.creator?.slice(0,12)}...
+
+📦 Contract
+${s.contract?.slice(0,12)}...
+
+🔎 https://basescan.org/address/${s.contract}
+
+⚡ BaseFlow`
+  }
+
+  if (s.type === "volume_spike") {
+    return `📈 VOLUME SPIKE
+
+💰 $${Math.round(s.amount)}
+
+⚡ BaseFlow`
+  }
+
+  return `⚡ ${s.type}`
 }
 
-async function sendTelegram(text){
+async function sendTelegram(text) {
 
- const url = `https://api.telegram.org/bot${BOT}/sendMessage`
+  const url = `https://api.telegram.org/bot${BOT}/sendMessage`
 
- await fetch(url,{
-  method:"POST",
-  headers:{ "Content-Type":"application/json"},
-  body:JSON.stringify({
-   chat_id:CHAT,
-   text
+  const res = await fetch(url,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      chat_id:CHAT,
+      text
+    })
   })
- })
 
+  if(!res.ok){
+    const body = await res.text()
+    console.error("Telegram error:",body)
+  }
 }
 
 async function run(){
 
- const res = await fetch(SIGNAL_URL)
- const data = await res.json()
+  try{
 
- const signals = data.signals || []
+    const res = await fetch(SIGNAL_URL)
+    const data = await res.json()
 
- for(const s of signals){
+    const signals = data.signals || []
 
-  const id = getId(s)
+    for(const s of signals){
 
-  if(sent.includes(id)) continue
+      const id = getId(s)
 
-  const msg = formatSignal(s)
+      if(sent.includes(id)) continue
 
-  await sendTelegram(msg)
+      const msg = formatSignal(s)
 
-  sent.push(id)
+      await sendTelegram(msg)
 
- }
+      sent.push(id)
 
- fs.writeFileSync(STORE_FILE,JSON.stringify(sent))
+    }
+
+    fs.writeFileSync(STORE_FILE,JSON.stringify(sent,null,2))
+
+  }catch(err){
+    console.error("worker error:",err)
+  }
 
 }
 

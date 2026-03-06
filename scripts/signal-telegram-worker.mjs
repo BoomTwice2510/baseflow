@@ -104,6 +104,10 @@ async function run(){
 
  sent.push(id)
 
+if(sent.length > 2000){
+ sent = sent.slice(-2000)
+}
+
 }
 
     fs.writeFileSync(STORE_FILE,JSON.stringify(sent,null,2))

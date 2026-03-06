@@ -193,21 +193,18 @@ export async function GET(request) {
     signals = signals.slice(0, limit)
 
     // ================= DEBUG =================
-    console.log("SIGNAL DEBUG:", {
+    if(process.env.DEBUG === "true"){
 
-      dexSignals: dexSignals.length,
+ console.log("SIGNAL DEBUG:",{
+  dexSignals: dexSignals.length,
+  rpcSignals: rpcSignals.length,
+  whaleSignals: whaleSignals.length,
+  deploySignals: deploySignals.length,
+  volumeSignals: volumeSignals.length,
+  poolSignals: poolSignals.length
+ })
 
-      rpcSignals: rpcSignals.length,
-
-      whaleSignals: whaleSignals.length,
-
-      deploySignals: deploySignals.length,
-
-      volumeSignals: volumeSignals.length,
-
-      poolSignals: poolSignals.length
-
-    })
+}
 
     // ================= TYPE FILTER =================
     if (types.length > 0) {

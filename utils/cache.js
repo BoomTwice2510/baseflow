@@ -2,9 +2,7 @@ let cache = null
 let lastUpdate = 0
 
 export function getCache(){
-
  return cache
-
 }
 
 export function setCache(data){
@@ -16,6 +14,10 @@ export function setCache(data){
 
 export function isExpired(){
 
- return Date.now()-lastUpdate > 120000
+ if(!cache) return true
+
+ const ttl = 120000
+
+ return Date.now() - lastUpdate > ttl
 
 }

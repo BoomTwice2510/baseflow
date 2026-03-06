@@ -6,19 +6,21 @@ export async function getDexPairs() {
       "https://api.dexscreener.com/latest/dex/search?q=base"
     )
 
-    const text = await res.text()
+    if (!res.ok) {
 
-    // अगर API HTML दे दे तो crash न हो
-    if (text.startsWith("<!DOCTYPE")) {
-      console.error("Dexscreener returned HTML")
+      console.error("Dexscreener status:", res.status)
+
       return []
+
     }
 
-    const data = JSON.parse(text)
+    const data = await res.json()
 
-    return data.pairs || []
+    return (data.pairs || []).filter(p => p.chainId === "base")
 
-  } catch (err) {
+  }
+
+  catch (err) {
 
     console.error("Dexscreener error:", err)
 

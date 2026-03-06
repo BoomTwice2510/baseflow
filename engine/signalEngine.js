@@ -1,43 +1,44 @@
-export function buildSignals({ pairs = [], gas = 0, pools = [] }) {
+export function buildSignals({ pairs = [], gas = {}, pools = [] }) {
 
   const signals = []
 
-  // tokens blacklist
   const blacklist = ["BASE","WETH","USDC"]
 
-  // duplicate tokens avoid
   const seenTokens = new Set()
+
+  const gasPrice = gas?.gas || 0
+
 
   pairs.forEach(pair => {
 
-    const token =
-      (pair?.baseToken?.symbol || "UNKNOWN").toUpperCase()
+    const base = pair?.baseToken?.symbol?.toUpperCase()
+    const quote = pair?.quoteToken?.symbol?.toUpperCase()
 
-    if (blacklist.includes(token)) return
+    if (!base) return
 
-    if (seenTokens.has(token)) return
-    seenTokens.add(token)
+    if (blacklist.includes(base) || blacklist.includes(quote)) return
+
+    if (seenTokens.has(base)) return
+    seenTokens.add(base)
 
     const liquidity = pair?.liquidity?.usd || 0
     const volume = pair?.volume?.h24 || 0
 
-    // liquidity signal
     if (liquidity > 50000 && liquidity < 10000000) {
 
       signals.push({
         type: "liquidity_added",
-        token,
+        token: base,
         liquidity
       })
 
     }
 
-    // volume spike
     if (volume > 200000) {
 
       signals.push({
         type: "volume_spike",
-        token,
+        token: base,
         volume
       })
 
@@ -46,27 +47,28 @@ export function buildSignals({ pairs = [], gas = 0, pools = [] }) {
   })
 
 
-  // gas spike
-  if (gas > 1000000000) {
+  if (gasPrice > 1000000000) {
 
     signals.push({
       type: "gas_spike",
-      gas
+      gas: gasPrice
     })
 
   }
 
 
-  // new pools
   pools.forEach(pool => {
 
     signals.push({
       type: "uniswap_pool_created",
-      pool: pool?.pool || "unknown"
+      token0: pool.token0,
+      token1: pool.token1,
+      pool: pool.pool
     })
 
   })
 
 
   return signals
+
 }

@@ -1,13 +1,27 @@
-import { ethers } from "ethers"
+import { JsonRpcProvider } from "ethers"
 
-export const provider = new ethers.JsonRpcProvider(
- "https://mainnet.base.org"
-)
+const RPC_URL =
+  process.env.BASE_RPC_URL ||
+  "https://mainnet.base.org"
 
-export async function getGasPrice(){
+export const provider = new JsonRpcProvider(RPC_URL)
 
- const fee = await provider.getFeeData()
+export async function getGasPrice() {
 
- return Number(fee.gasPrice)
+  try {
+
+    const fee = await provider.getFeeData()
+
+    return {
+      gas: Number(fee.gasPrice || 0)
+    }
+
+  } catch (err) {
+
+    console.error("Gas fetch error:", err.message)
+
+    return {}
+
+  }
 
 }

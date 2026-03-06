@@ -1,8 +1,5 @@
 import { ethers } from "ethers"
-
-const provider = new ethers.JsonRpcProvider(
-  "https://mainnet.base.org"
-)
+import { provider } from "./baseRpc.js"
 
 let lastBlock = null
 
@@ -15,32 +12,30 @@ export async function scanBaseBlocks() {
     const currentBlock = await provider.getBlockNumber()
 
     if (!lastBlock) {
-      lastBlock = currentBlock - 2
+      lastBlock = currentBlock - 3
     }
 
     for (let i = lastBlock; i <= currentBlock; i++) {
 
       const block = await provider.getBlock(i, true)
 
-      if (!block || !block.transactions) continue
+      if (!block) continue
 
       block.transactions.forEach(tx => {
 
-        // contract deploy
         if (tx.to === null) {
           signals.push({
             type: "token_deploy",
             creator: tx.from,
-            hash: tx.hash
+            contract: tx.hash
           })
         }
 
-        // whale transfer
-        if (tx.value && tx.value > ethers.parseEther("20")) {
+        if (tx.value && tx.value > ethers.parseEther("3")) {
           signals.push({
             type: "whale_tx",
             wallet: tx.from,
-            amount: ethers.formatEther(tx.value)
+            amount: Number(ethers.formatEther(tx.value))
           })
         }
 
@@ -52,7 +47,7 @@ export async function scanBaseBlocks() {
 
   } catch (err) {
 
-    console.error("RPC scan error:", err)
+    console.log("RPC scan error:", err.message)
 
   }
 

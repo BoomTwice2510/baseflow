@@ -1,103 +1,103 @@
-// scripts/signal-telegram-worker.mjs
-import "dotenv/config";
-import fetch from "node-fetch";
+import fetch from "node-fetch"
+import dotenv from "dotenv"
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-const SIGNAL_URL =
-  process.env.SIGNAL_AGENT_URL || "http://localhost:3000/api/signals";
+dotenv.config()
 
-const seenIds = new Set();
+const BOT = process.env.TELEGRAM_BOT_TOKEN
+const CHAT = process.env.TELEGRAM_CHAT_ID
+const API = process.env.SIGNAL_API
 
-async function sendTelegram(text) {
-  if (!BOT_TOKEN || !CHAT_ID) {
-    console.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
-    return;
-  }
+let lastHash = new Set()
 
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: CHAT_ID,
-      text,
-      parse_mode: "Markdown"
-    })
-  });
+function formatSignal(s){
 
-  if (!res.ok) {
-    const body = await res.text();
-    console.error("Telegram error", res.status, body);
-  }
+ if(s.type === "whale_tx"){
+  return `🐋 Whale Tx
+
+Wallet: ${s.wallet}
+Amount: ${s.amount} ETH
+Tx: https://basescan.org/tx/${s.tx}`
+ }
+
+ if(s.type === "token_deploy"){
+  return `🚀 Token Deploy
+
+Creator: ${s.creator}
+Contract: https://basescan.org/address/${s.contract}`
+ }
+
+ if(s.type === "volume_spike"){
+  return `📈 Volume Spike
+
+Volume: $${Math.round(s.amount)}`
+ }
+
+ if(s.type === "liquidity_added"){
+  return `💧 Liquidity Added
+
+Token: ${s.token}
+Liquidity: $${Math.round(s.liquidity)}`
+ }
+
+ if(s.type === "uniswap_pool_created"){
+  return `🦄 New Pool
+
+Pool: ${s.pool}`
+ }
+
+ return null
 }
 
-function formatSignalMessage(signal) {
-  const m = signal.meta || {};
-  const type = signal.type;
-  const desc = signal.description;
-  const ts = signal.observed_at;
+async function sendTelegram(text){
 
-  let header = `⚡ *${type}*`;
-  let extra = "";
+ await fetch(`https://api.telegram.org/bot${BOT}/sendMessage`,{
+  method:"POST",
+  headers:{ "Content-Type":"application/json" },
+  body: JSON.stringify({
+   chat_id: CHAT,
+   text,
+   disable_web_page_preview:true
+  })
+ })
 
-  if (type === "whale_transfer" && m.eth_value) {
-    extra = `\n💰 ${m.eth_value} ETH`;
-  } else if (type === "token_deploy") {
-    extra = `\n🪙 New token deploy by ${m.deployer?.slice(0, 8)}...`;
-  } else if (type === "liquidity_migration" && m.eth_value) {
-    extra = `\n💦 Liquidity move: ${m.eth_value} ETH`;
-  } else if (type === "smart_money_wallet" && m.volume_eth) {
-    extra = `\n🧠 Smart wallet vol: ${m.volume_eth} ETH`;
-  }
-
-  let txLine = "";
-  if (m.tx_hash) {
-    txLine = `\n🔗 [tx](https://basescan.org/tx/${m.tx_hash})`;
-  }
-
-  return `${header}\n${desc}${extra}${txLine}\n\n⏱ ${ts}`;
 }
 
-async function poll() {
-  try {
-    const res = await fetch(SIGNAL_URL);
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.error("Signal agent error", res.status, body);
-      return;
-    }
+async function loop(){
 
-    const json = await res.json();
-    const signals = json.signals || [];
+ try{
 
-    const interesting = signals.filter((s) =>
-      [
-        "whale_transfer",
-        "token_deploy",
-        "liquidity_migration",
-        "dex_swap",
-        "smart_money_wallet"
-      ].includes(s.type)
-    );
+  const res = await fetch(API)
 
-    for (const s of interesting) {
-      if (seenIds.has(s.id)) continue;
-      seenIds.add(s.id);
+  const data = await res.json()
 
-      const text = formatSignalMessage(s);
-      await sendTelegram(text);
-    }
-  } catch (e) {
-    console.error("poll error", e);
+  const signals = data.signals || []
+
+  for(const s of signals){
+
+   const key = JSON.stringify(s)
+
+   if(lastHash.has(key)) continue
+
+   const msg = formatSignal(s)
+
+   if(msg){
+
+    await sendTelegram(msg)
+
+    lastHash.add(key)
+
+   }
+
   }
+
+ }catch(err){
+
+  console.log("worker error",err.message)
+
+ }
+
 }
 
-async function main() {
-  console.log("Starting signal telegram worker...");
-  console.log("SIGNAL_URL:", SIGNAL_URL);
-  await poll();
-  setInterval(poll, 30000);
-}
+setInterval(loop,20000)
 
-main().catch(console.error);
+console.log("telegram worker started")

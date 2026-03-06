@@ -90,17 +90,21 @@ async function run(){
 
     for(const s of signals){
 
-      const id = getId(s)
+ const id = getId(s)
 
-      if(sent.includes(id)) continue
+ // duplicate skip
+ if(sent.includes(id)) continue
 
-      const msg = formatSignal(s)
+ // score filter
+ if((s.score || 0) < 5) continue
 
-      await sendTelegram(msg)
+ const msg = formatSignal(s)
 
-      sent.push(id)
+ await sendTelegram(msg)
 
-    }
+ sent.push(id)
+
+}
 
     fs.writeFileSync(STORE_FILE,JSON.stringify(sent,null,2))
 

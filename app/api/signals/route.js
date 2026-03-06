@@ -11,6 +11,7 @@ import {
 } from "../../../services/dune.js"
 
 import { buildSignals } from "../../../engine/signalEngine.js"
+import { scoreSignal } from "../../../engine/signalScore.js"
 
 import {
   getCache,
@@ -176,6 +177,17 @@ export async function GET(request) {
       return true
 
     })
+
+    // ===== SCORE =====
+
+    signals = signals.map(s => ({
+      ...s,
+      score: scoreSignal(s)
+    }))
+
+    // ===== SORT BY SCORE =====
+
+    signals.sort((a, b) => b.score - a.score)
 
     // ================= LIMIT =================
     signals = signals.slice(0, limit)

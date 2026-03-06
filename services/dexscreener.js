@@ -3,7 +3,7 @@ export async function getDexPairs() {
   try {
 
     const res = await fetch(
-      "https://api.dexscreener.com/latest/dex/search?q=base"
+      "https://api.dexscreener.com/latest/dex/pairs/base"
     )
 
     if (!res.ok) {

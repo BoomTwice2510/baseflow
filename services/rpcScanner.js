@@ -1,55 +1,35 @@
-import { ethers } from "ethers"
 import { provider } from "./baseRpc.js"
+import { ethers } from "ethers"
 
-let lastBlock = null
+export async function scanBaseBlocks(){
 
-export async function scanBaseBlocks() {
+ const signals=[]
 
-  const signals = []
+ try{
 
-  try {
+  const block = await provider.getBlock("latest",true)
 
-    const currentBlock = await provider.getBlockNumber()
+  block.transactions.forEach(tx=>{
 
-    if (!lastBlock) {
-      lastBlock = currentBlock - 3
-    }
+   if(tx.value && tx.value > ethers.parseEther("20")){
 
-    for (let i = lastBlock; i <= currentBlock; i++) {
+    signals.push({
+     type:"whale_tx",
+     wallet:tx.from,
+     amount:Number(ethers.formatEther(tx.value)),
+     tx:tx.hash
+    })
 
-      const block = await provider.getBlock(i, true)
+   }
 
-      if (!block) continue
+  })
 
-      block.transactions.forEach(tx => {
+ }catch(err){
 
-        if (tx.to === null) {
-          signals.push({
-            type: "token_deploy",
-            creator: tx.from,
-            contract: tx.hash
-          })
-        }
+  console.error("RPC scan error:",err)
 
-        if (tx.value && tx.value > ethers.parseEther("3")) {
-          signals.push({
-            type: "whale_tx",
-            wallet: tx.from,
-            amount: Number(ethers.formatEther(tx.value))
-          })
-        }
+ }
 
-      })
+ return signals
 
-    }
-
-    lastBlock = currentBlock
-
-  } catch (err) {
-
-    console.log("RPC scan error:", err.message)
-
-  }
-
-  return signals
 }

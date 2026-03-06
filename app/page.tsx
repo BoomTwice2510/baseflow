@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 type Signal = {
   id?: string;
@@ -59,6 +60,12 @@ export default function HomePage() {
     }, 15000);
     return () => clearInterval(id);
   }, [autoRefresh]);
+
+  useEffect(() => {
+  if (!loading) {
+    sdk.actions.ready().catch(() => {});
+  }
+}, [loading]);
 
   const signals: Signal[] = data?.signals || [];
   const meta = data?.meta || {};

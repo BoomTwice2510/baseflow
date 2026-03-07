@@ -9,48 +9,43 @@ export async function scanBaseBlocks(){
 
  try{
 
-  const block = await provider.getBlockWithTransactions("latest")
+  const block = await provider.getBlockWithTransactions("latest");
 
-  for(const tx of block.transactions){
+for (const tx of block.transactions) {
+  const observed_at = new Date(block.timestamp * 1000).toISOString();
 
-   const value = Number(formatEther(tx.value || 0))
-
-   // 🐋 Whale transfer
-   if(value >= WHALE_THRESHOLD){
-
+  if (value >= WHALE_THRESHOLD) {
     signals.push({
-     type:"whale_tx",
-     wallet:tx.from,
-     amount:value,
-     tx:tx.hash
-    })
-
-   }
-
-   // 🪙 Contract deploy
-   if(tx.to === null){
-
-    signals.push({
-     type:"token_deploy",
-     creator:tx.from,
-     tx:tx.hash
-    })
-
-   }
-
-   // 🚀 Suspicious launch pattern
-   if(tx.to === null && value > 1){
-
-    signals.push({
-     type:"launch_activity",
-     creator:tx.from,
-     amount:value,
-     tx:tx.hash
-    })
-
-   }
-
+      type: "whale_tx",
+      wallet: tx.from,
+      amount: value,
+      tx: tx.hash,
+      observed_at,
+      source: "rpc_whale",
+    });
   }
+
+  if (tx.to === null) {
+    signals.push({
+      type: "token_deploy",
+      creator: tx.from,
+      tx: tx.hash,
+      observed_at,
+      source: "rpc_deploy",
+    });
+  }
+
+  if (tx.to === null && value > 1) {
+    signals.push({
+      type: "launch_activity",
+      creator: tx.from,
+      amount: value,
+      tx: tx.hash,
+      observed_at,
+      source: "rpc_launch",
+    });
+  }
+}
 
  }catch(err){
 

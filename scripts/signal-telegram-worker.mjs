@@ -1,191 +1,163 @@
-const BOT = process.env.TELEGRAM_BOT_TOKEN
-const CHAT = process.env.TELEGRAM_CHAT_ID
-const SIGNAL_URL = process.env.SIGNAL_AGENT_URL
+// scripts/signal-telegram-worker.mjs
+
+const BOT = process.env.TELEGRAM_BOT_TOKEN;
+const CHAT = process.env.TELEGRAM_CHAT_ID;
+const SIGNAL_URL = process.env.SIGNAL_AGENT_URL;
 
 if (!BOT || !CHAT || !SIGNAL_URL) {
-  console.error("Missing env variables")
-  process.exit(1)
+  console.error("Missing env variables");
+  process.exit(1);
 }
 
 // format telegram message
 function formatSignal(s) {
-
   if (s.type === "whale_tx") {
+    const amt = Number(s.amount || 0);
     return `🐋 WHALE MOVE
-💰 ${Number(s.amount).toFixed(2)} ETH
+💰 ${amt.toFixed(2)} ETH
 👛 ${s.wallet?.slice(0,10)}...
-🔗 https://basescan.org/tx/${s.tx}`
+🔗 https://basescan.org/tx/${s.tx}`;
   }
 
   if (s.type === "token_deploy") {
     return `🪙 NEW TOKEN DEPLOYED
 🏗 Creator ${s.creator?.slice(0,12)}...
 📦 Contract ${s.contract?.slice(0,12)}...
-🔎 https://basescan.org/address/${s.contract}`
+🔎 https://basescan.org/address/${s.contract}`;
   }
 
   if (s.type === "volume_spike") {
+    const vol = Number(s.volume ?? s.amount ?? 0);
     return `📈 VOLUME SPIKE
-💰 $${Math.round(s.amount)}`
+💰 $${Math.round(vol).toLocaleString()}`;
   }
 
   if (s.type === "smart_money_buy") {
+    const amt = Number(s.amount || 0);
     return `🧠 SMART MONEY BUY
 👛 ${s.wallet?.slice(0,12)}...
 🪙 ${s.token}
-💰 $${Math.round(s.amount)}
-🔗 https://basescan.org/tx/${s.tx}`
+💰 $${Math.round(amt).toLocaleString()}
+🔗 https://basescan.org/tx/${s.tx}`;
   }
 
   if (s.type === "multi_whale") {
+    const vol = Number(s.volume || 0);
     return `🐳 MULTI WHALE
 🪙 ${s.token}
 🐋 Whales ${s.whales}
-💰 $${Math.round(s.volume)}`
+💰 $${Math.round(vol).toLocaleString()}`;
   }
 
   if (s.type === "holder_spike") {
     return `📈 HOLDER SPIKE
 🪙 ${s.token}
-👥 Growth ${s.growth}%`
+👥 Growth ${s.growth}%`;
   }
 
-  return `⚡ ${s.type}`
+  return `⚡ ${s.type}`;
 }
 
 // telegram sender
 async function sendTelegram(text) {
+  const url = `https://api.telegram.org/bot${BOT}/sendMessage`;
 
-  const url = `https://api.telegram.org/bot${BOT}/sendMessage`
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT,
+      text,
+    }),
+  });
 
-  const res = await fetch(url,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      chat_id:CHAT,
-      text
-    })
-  })
-
-  if(!res.ok){
-    console.error("Telegram error:", await res.text())
+  if (!res.ok) {
+    console.error("Telegram error:", await res.text());
   }
 }
-
 
 // 🔥 HIGH CONVICTION DETECTOR
-function detectHighConviction(signals){
+function detectHighConviction(signals) {
+  const tokenMap = {};
 
-  const tokenMap = {}
+  for (const s of signals) {
+    const token = s.token || s.contract || null;
+    if (!token) continue;
 
-  for(const s of signals){
-
-    const token =
-      s.token ||
-      s.contract ||
-      null
-
-    if(!token) continue
-
-    if(!tokenMap[token]){
-      tokenMap[token] = []
+    if (!tokenMap[token]) {
+      tokenMap[token] = [];
     }
-
-    tokenMap[token].push(s)
-
+    tokenMap[token].push(s);
   }
 
-  const alerts = []
+  const alerts = [];
 
-  for(const token in tokenMap){
+  for (const token in tokenMap) {
+    const group = tokenMap[token];
+    const types = new Set(group.map((s) => s.type));
 
-    const group = tokenMap[token]
-
-    const types = new Set(group.map(s=>s.type))
-
-    if(
-      types.has("smart_money_buy") &&
-      types.has("whale_tx")
-    ){
-
+    if (types.has("smart_money_buy") && types.has("whale_tx")) {
       alerts.push({
         token,
-        signals: group
-      })
-
+        signals: group,
+      });
     }
-
   }
 
-  return alerts
+  return alerts;
 }
 
-
-
 // worker main
-async function run(){
+async function run() {
+  try {
+    const res = await fetch(SIGNAL_URL);
 
-  try{
-
-    const res = await fetch(SIGNAL_URL)
-
-    if(!res.ok){
-      console.error("Signal API error:",res.status)
-      return
+    if (!res.ok) {
+      console.error("Signal API error:", res.status);
+      return;
     }
 
-    const data = await res.json()
+    const data = await res.json();
+    const signals = data.signals || [];
 
-    const signals = data.signals || []
+    const batch = [];
 
-    const batch = []
-
-    for(const s of signals){
-
-      if((s.score || 0) < 4) continue
-
-      batch.push(formatSignal(s))
-
+    for (const s of signals) {
+      if ((s.score || 0) < 4) continue;
+      batch.push(formatSignal(s));
     }
 
     // 🔥 HIGH CONVICTION ALERTS
-    const alerts = detectHighConviction(signals)
+    const alerts = detectHighConviction(signals);
 
-    for(const a of alerts){
-
-      const msg =
-`🔥 HIGH CONVICTION SIGNAL
+    for (const a of alerts) {
+      const msg = `🔥 HIGH CONVICTION SIGNAL
 
 Token: ${a.token}
 
 Signals:
-${a.signals.map(s=>"• "+s.type).join("\n")}
+${a.signals.map((s) => "• " + s.type).join("\n")}
 
-⚡ BaseFlow`
+⚡ BaseFlow`;
 
-      await sendTelegram(msg)
-
+      await sendTelegram(msg);
     }
 
-    if(batch.length === 0){
-      console.log("No signals to send")
-      return
+    if (batch.length === 0) {
+      console.log("No signals to send");
+      return;
     }
 
-    const finalMessage =
-`⚡ BASEFLOW SIGNALS
+    const finalMessage = `⚡ BASEFLOW SIGNALS
 
 ${batch.join("\n\n")}
 
-⚡ BaseFlow`
+⚡ BaseFlow`;
 
-    await sendTelegram(finalMessage)
-
+    await sendTelegram(finalMessage);
+  } catch (err) {
+    console.error("Worker error:", err);
   }
-  catch(err){
-    console.error("Worker error:",err)
-  }
-
 }
 
-run()
+run();

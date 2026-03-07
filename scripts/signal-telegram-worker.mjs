@@ -142,7 +142,7 @@ async function run(){
 
     for(const s of signals){
 
-      if((s.score || 0) < 5) continue
+      if((s.score || 0) < 4) continue
 
       batch.push(formatSignal(s))
 

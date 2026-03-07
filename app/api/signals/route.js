@@ -109,22 +109,32 @@ export async function GET(request) {
     ] = await Promise.all(fetches)
 
     // ================= WHALE FILTER =================
-    const seenWallets = new Set()
+const whaleBlacklist = [
+ "0x4200000000000000000000000000000000000010",
+ "0x4200000000000000000000000000000000000006"
+]
 
-    const whaleFiltered =
-      whaleSignals
-        .sort((a,b) => (b.amount || 0) - (a.amount || 0))
-        .filter(w => {
+const seenWallets = new Set()
 
-          if (!w.wallet) return false
+const whaleFiltered =
+  whaleSignals
+    .sort((a,b) => (b.amount || 0) - (a.amount || 0))
+    .filter(w => {
 
-          if (seenWallets.has(w.wallet)) return false
+      if (!w.wallet) return false
 
-          seenWallets.add(w.wallet)
+      const wallet = String(w.wallet).toLowerCase()
 
-          return true
-        })
-        .slice(0, MAX_WHALE)
+      if (whaleBlacklist.includes(wallet)) return false
+
+      if (seenWallets.has(wallet)) return false
+
+      seenWallets.add(wallet)
+
+      return true
+
+    })
+    .slice(0, MAX_WHALE)
 
     // ================= DEPLOY FILTER =================
     const deployFiltered =

@@ -2,7 +2,7 @@ name: Signal Telegram Worker
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -18,10 +18,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
-
-      - name: Install deps
-        run: npm ci
 
       - name: Run worker
         run: node scripts/signal-telegram-worker.mjs

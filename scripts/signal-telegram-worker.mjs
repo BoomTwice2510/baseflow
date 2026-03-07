@@ -1,40 +1,13 @@
-import fetch from "node-fetch"
-import fs from "fs"
-
 const BOT = process.env.TELEGRAM_BOT_TOKEN
 const CHAT = process.env.TELEGRAM_CHAT_ID
 const SIGNAL_URL = process.env.SIGNAL_AGENT_URL
 
-// env safety
-if(!BOT || !CHAT || !SIGNAL_URL){
- console.error("Missing env variables")
- process.exit(1)
+if (!BOT || !CHAT || !SIGNAL_URL) {
+  console.error("Missing env variables")
+  process.exit(1)
 }
 
-const STORE_FILE = "./sent-signals.json"
-
-let sent = []
-
-// load already sent signals
-if (fs.existsSync(STORE_FILE)) {
-  try {
-    sent = JSON.parse(fs.readFileSync(STORE_FILE))
-  } catch {
-    sent = []
-  }
-}
-
-// stronger unique id
-function getId(s) {
-  return (
-    s.tx ||
-    s.contract ||
-    `${s.token}-${s.type}` ||
-    `${s.wallet}-${s.amount}-${s.type}`
-  )
-}
-
-// telegram formatting
+// format telegram message
 function formatSignal(s) {
 
   if (s.type === "whale_tx") {
@@ -95,11 +68,61 @@ async function sendTelegram(text) {
   })
 
   if(!res.ok){
-    const body = await res.text()
-    console.error("Telegram error:",body)
+    console.error("Telegram error:", await res.text())
   }
 }
 
+
+// 🔥 HIGH CONVICTION DETECTOR
+function detectHighConviction(signals){
+
+  const tokenMap = {}
+
+  for(const s of signals){
+
+    const token =
+      s.token ||
+      s.contract ||
+      null
+
+    if(!token) continue
+
+    if(!tokenMap[token]){
+      tokenMap[token] = []
+    }
+
+    tokenMap[token].push(s)
+
+  }
+
+  const alerts = []
+
+  for(const token in tokenMap){
+
+    const group = tokenMap[token]
+
+    const types = new Set(group.map(s=>s.type))
+
+    if(
+      types.has("smart_money_buy") &&
+      types.has("whale_tx")
+    ){
+
+      alerts.push({
+        token,
+        signals: group
+      })
+
+    }
+
+  }
+
+  return alerts
+}
+
+
+
+// worker main
 async function run(){
 
   try{
@@ -119,43 +142,48 @@ async function run(){
 
     for(const s of signals){
 
-      const id = getId(s)
-
-      // duplicate skip
-      if(sent.includes(id)) continue
-
-      // score filter
       if((s.score || 0) < 5) continue
 
-      const msg = formatSignal(s)
-
-      batch.push(msg)
-
-      sent.push(id)
-
-      if(sent.length > 2000){
-        sent = sent.slice(-2000)
-      }
+      batch.push(formatSignal(s))
 
     }
 
-    if(batch.length > 0){
+    // 🔥 HIGH CONVICTION ALERTS
+    const alerts = detectHighConviction(signals)
 
-      const finalMessage =
+    for(const a of alerts){
+
+      const msg =
+`🔥 HIGH CONVICTION SIGNAL
+
+Token: ${a.token}
+
+Signals:
+${a.signals.map(s=>"• "+s.type).join("\n")}
+
+⚡ BaseFlow`
+
+      await sendTelegram(msg)
+
+    }
+
+    if(batch.length === 0){
+      console.log("No signals to send")
+      return
+    }
+
+    const finalMessage =
 `⚡ BASEFLOW SIGNALS
 
 ${batch.join("\n\n")}
 
 ⚡ BaseFlow`
 
-      await sendTelegram(finalMessage)
+    await sendTelegram(finalMessage)
 
-    }
-
-    fs.writeFileSync(STORE_FILE,JSON.stringify(sent,null,2))
-
-  }catch(err){
-    console.error("worker error:",err)
+  }
+  catch(err){
+    console.error("Worker error:",err)
   }
 
 }

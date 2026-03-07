@@ -1,51 +1,42 @@
 import { provider } from "./baseRpc.js"
 import { formatEther } from "ethers"
 
-const WHALE_THRESHOLD = 50
+const WHALE_THRESHOLD = 25
+
+let lastBlock = 0
 
 export async function scanBaseBlocks(){
 
- const signals = []
+ const signals=[]
 
  try{
 
-  const block = await provider.getBlockWithTransactions("latest");
+  const current = await provider.getBlockNumber()
 
-for (const tx of block.transactions) {
-  const observed_at = new Date(block.timestamp * 1000).toISOString();
+  for(let i = lastBlock + 1; i <= current; i++){
 
-  if (value >= WHALE_THRESHOLD) {
-    signals.push({
-      type: "whale_tx",
-      wallet: tx.from,
-      amount: value,
-      tx: tx.hash,
-      observed_at,
-      source: "rpc_whale",
-    });
+   const block = await provider.getBlock(i,true)
+
+   for(const tx of block.transactions){
+
+    const ethValue = tx.value ? Number(formatEther(tx.value)) : 0
+
+    if(ethValue >= WHALE_THRESHOLD){
+
+     signals.push({
+      type:"whale_tx",
+      wallet:tx.from,
+      amount:ethValue,
+      tx:tx.hash
+     })
+
+    }
+
+   }
+
   }
 
-  if (tx.to === null) {
-    signals.push({
-      type: "token_deploy",
-      creator: tx.from,
-      tx: tx.hash,
-      observed_at,
-      source: "rpc_deploy",
-    });
-  }
-
-  if (tx.to === null && value > 1) {
-    signals.push({
-      type: "launch_activity",
-      creator: tx.from,
-      amount: value,
-      tx: tx.hash,
-      observed_at,
-      source: "rpc_launch",
-    });
-  }
-}
+  lastBlock = current
 
  }catch(err){
 
@@ -54,5 +45,4 @@ for (const tx of block.transactions) {
  }
 
  return signals
-
 }

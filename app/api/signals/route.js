@@ -5,14 +5,12 @@ import { scanUniswapPools } from "../../../services/uniswapScanner.js"
 
 import {
   getWhaleSignals,
-  getDeploySignals,
   getVolumeSignals,
   getSmartMoneySignals,
   getMultiWhaleSignals,
   getHolderSpikeSignals
 } from "../../../services/dune.js"
 
-import { buildSignals } from "../../../engine/signalEngine.js"
 import { scoreSignal } from "../../../engine/signalScore.js"
 import { applySignalCorrelation } from "../../../engine/correlationEngine.js"
 
@@ -37,11 +35,13 @@ export async function GET(request) {
 
     // ================= CONFIG =================
     const MAX_WHALE = parseInt(process.env.MAX_WHALE_SIGNALS || "5")
-    const MAX_DEPLOY = parseInt(process.env.MAX_DEPLOY_SIGNALS || "5")
     const MAX_VOLUME = parseInt(process.env.MAX_VOLUME_SIGNALS || "5")
-    const MAX_RPC = parseInt(process.env.MAX_RPC_SIGNALS || "5")
+    const MAX_RPC = parseInt(process.env.MAX_RPC_SIGNALS || "2")
     const MAX_POOLS = parseInt(process.env.MAX_POOL_SIGNALS || "5")
-    const MAX_FINAL = parseInt(process.env.MAX_FINAL_SIGNALS || "25")
+    const MAX_SMART = parseInt(process.env.MAX_SMART_SIGNALS || "5")
+    const MAX_HOLDER_SPIKE = parseInt(process.env.MAX_HOLDER_SPIKE || "5")
+    const HOLDER_SPIKE_THRESHOLD = parseInt(process.env.HOLDER_SPIKE_THRESHOLD || "150")
+    const MAX_FINAL = parseInt(process.env.MAX_FINAL_SIGNALS || "15")
 
     const VOLUME_THRESHOLD =
       parseFloat(process.env.VOLUME_THRESHOLD || "100000")
@@ -56,15 +56,16 @@ export async function GET(request) {
     const types =
       searchParams.get("types")?.split(",").map(t => t.trim()) || []
 
-    const limit =
-      parseInt(searchParams.get("limit") || MAX_FINAL.toString())
+    const limit = Math.min(
+     parseInt(searchParams.get("limit") || MAX_FINAL),
+    MAX_FINAL
+    )
 
     // ================= FETCH =================
     let gas = {}
     let pools = []
     let rpcSignals = []
     let whaleSignals = []
-    let deploySignals = []
     let volumeSignals = []
     let poolSignals = []
     let smartMoneySignals = []
@@ -73,15 +74,13 @@ export async function GET(request) {
 
     const fetches = [
 
-      getGasPrice().catch(() => ({})),
+      getGasPrice().catch(()=>({})),
 
       getNewPools().catch(() => []),
 
       scanBaseBlocks().catch(() => []),
 
       getWhaleSignals().catch(() => []),
-
-      getDeploySignals().catch(() => []),
 
       getVolumeSignals().catch(() => []),
 
@@ -91,7 +90,8 @@ export async function GET(request) {
 
       getMultiWhaleSignals().catch(() => []),
 
-      getHolderSpikeSignals().catch(() => [])
+      getHolderSpikeSignals().catch(() => []),
+
 
     ]
 
@@ -100,12 +100,12 @@ export async function GET(request) {
       pools,
       rpcSignals,
       whaleSignals,
-      deploySignals,
       volumeSignals,
       poolSignals,
       smartMoneySignals,
       multiWhaleSignals,
-      holderSpikeSignals
+      holderSpikeSignals,
+
     ] = await Promise.all(fetches)
 
     // ================= WHALE FILTER =================
@@ -116,66 +116,70 @@ const whaleBlacklist = [
 
 const seenWallets = new Set()
 
+const seenTx = new Set()
+
 const whaleFiltered =
   whaleSignals
     .sort((a,b) => (b.amount || 0) - (a.amount || 0))
     .filter(w => {
 
       if (!w.wallet) return false
+      if (!w.tx) return false
 
       const wallet = String(w.wallet).toLowerCase()
+      const to = String(w.to || "").toLowerCase()
 
       if (whaleBlacklist.includes(wallet)) return false
 
+      // remove self / routing transfers
+      if (wallet === to) return false
+
+      // remove duplicate tx
+      if (seenTx.has(w.tx)) return false
+      seenTx.add(w.tx)
+
+      // remove wallet spam
       if (seenWallets.has(wallet)) return false
-
       seenWallets.add(wallet)
-
       return true
 
     })
     .slice(0, MAX_WHALE)
 
-    // ================= DEPLOY FILTER =================
-    const deployFiltered =
-      deploySignals
-        .filter(d =>
-          !deployBlacklist.includes(
-            d.creator?.toLowerCase()
-          )
-        )
-        .slice(0, MAX_DEPLOY)
-
-    // ================= VOLUME FILTER (BUG FIXED) =================
-    const volumeFiltered =
+      // ================= VOLUME FILTER (BUG FIXED) =================
+      const volumeFiltered =
       volumeSignals
-        .filter(v => v.amount > VOLUME_THRESHOLD)
+        .filter(v => (v.volume || v.amount || 0) > VOLUME_THRESHOLD)
         .slice(0, MAX_VOLUME)
 
-    // ================= POOL FILTER =================
-    const poolFiltered =
-      poolSignals.slice(0, MAX_POOLS)
+       // ================= POOL FILTER =================
+        const poolFiltered =
+       poolSignals.slice(0, MAX_POOLS)
 
-    // ================= MERGE =================
-    let signals = [
+      // ================= MERGE =================
 
-      ...rpcSignals.slice(0, MAX_RPC),
+        let signals = [
 
-      ...whaleFiltered,
+        ...poolFiltered,
 
-      ...deployFiltered,
+        ...whaleFiltered,
 
-      ...volumeFiltered,
+        ...smartMoneySignals.slice(0, MAX_SMART),
 
-      ...poolFiltered,
+        ...multiWhaleSignals.slice(0, MAX_SMART),
 
-      ...smartMoneySignals,
+        ...volumeFiltered,
 
-      ...multiWhaleSignals,
+        ...rpcSignals.slice(0, MAX_RPC),
 
-      ...holderSpikeSignals
+        ...holderSpikeSignals
+        .filter(h => h.holders_1h > HOLDER_SPIKE_THRESHOLD)
+        .filter(h => h.holders_1h < 2000)
+        .filter(h => h.growth > 30)
+        .sort((a,b) => (b.holders_1h || 0) - (a.holders_1h || 0))
+        .slice(0, MAX_HOLDER_SPIKE)
 
-    ]
+      ]
 
     // ================= REMOVE DUPLICATES =================
     const seen = new Set()
@@ -183,11 +187,11 @@ const whaleFiltered =
     signals = signals.filter(s => {
 
       const key =
-  s.tx ||
-  s.contract ||
-  s.token ||
-  s.pool ||
-  JSON.stringify(s)
+    s.tx ||
+    s.contract ||
+    s.token ||
+    s.pool ||
+    `${s.type}-${s.token || s.contract}-${s.observed_at}`
 
       if (seen.has(key)) return false
 
@@ -201,7 +205,7 @@ const whaleFiltered =
 
     signals = signals.map(s => ({
       ...s,
-      score: scoreSignal(s)
+      score: scoreSignal(s || {})
     }))
 
     signals = applySignalCorrelation(signals)
@@ -209,16 +213,15 @@ const whaleFiltered =
     // ===== SORT BY SCORE =====
 
    signals = signals
-  .sort((a, b) => b.score - a.score)
+  .sort((a,b)=>(b.score||0)-(a.score||0))
   .slice(0, limit)
 
     // ================= DEBUG =================
     if(process.env.DEBUG === "true"){
 
- console.log("SIGNAL DEBUG:",{
+  console.log("SIGNAL DEBUG:",{
   rpcSignals: rpcSignals.length,
   whaleSignals: whaleSignals.length,
-  deploySignals: deploySignals.length,
   volumeSignals: volumeSignals.length,
   poolSignals: poolSignals.length,
   smartMoneySignals: smartMoneySignals.length,
@@ -232,9 +235,7 @@ const whaleFiltered =
     if (types.length > 0) {
 
       signals = signals.filter(s =>
-        types.includes(
-          s.category || s.type || "unknown"
-        )
+        types.includes(s.type)
       )
 
     }
@@ -247,8 +248,6 @@ const whaleFiltered =
         rpc: rpcSignals.length > 0,
 
         whale: whaleSignals.length > 0,
-
-        deploy: deploySignals.length > 0,
 
         volume: volumeSignals.length > 0,
 
@@ -265,7 +264,6 @@ const whaleFiltered =
       total_raw:
         rpcSignals.length +
         whaleSignals.length +
-        deploySignals.length +
         volumeSignals.length +
         poolSignals.length +
         smartMoneySignals.length +

@@ -1,59 +1,73 @@
-import { provider } from "./baseRpc.js";
-import { ethers } from "ethers";
+import { provider } from "./baseRpc.js"
+import { ethers } from "ethers"
 
-const FACTORY = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD";
+const FACTORY="0x33128a8fC17869897dcE68Ed026d694621f6FDfD"
 
-const ABI = [
-  "event PoolCreated(address indexed token0,address indexed token1,uint24 fee,int24 tickSpacing,address pool)"
-];
+const ABI=[
+ "event PoolCreated(address indexed token0,address indexed token1,uint24 fee,int24 tickSpacing,address pool)"
+]
 
-const contract = new ethers.Contract(FACTORY, ABI, provider);
+const contract=new ethers.Contract(FACTORY,ABI,provider)
 
-let lastBlock = null;
+let lastBlock=0
 
-export async function scanUniswapPools() {
-  try {
-    const latest = await provider.getBlockNumber();
+export async function scanUniswapPools(){
 
-    if (!lastBlock) {
-      // first run: small window to avoid missing recent pools
-      lastBlock = latest - 20;
-      if (lastBlock < 0) lastBlock = 0;
-    }
+ try{
 
-    const filter = contract.filters.PoolCreated();
+  const latest=await provider.getBlockNumber()
 
-    const events = await contract.queryFilter(
-      filter,
-      lastBlock,
-      latest
-    );
-
-    const signals = [];
-
-    for (const e of events) {
-      if (!e.args) continue;
-
-      const block = await e.getBlock?.().catch(() => null);
-      const observed_at = block
-        ? new Date(block.timestamp * 1000).toISOString()
-        : null;
-
-      signals.push({
-        type: "uniswap_pool_created",
-        token0: e.args.token0.toLowerCase(),
-        token1: e.args.token1.toLowerCase(),
-        pool: e.args.pool.toLowerCase(),
-        observed_at,
-        source: "rpc_uniswap_pool"
-      });
-    }
-
-    lastBlock = latest;
-
-    return signals;
-  } catch (err) {
-    console.error("Uniswap scan error:", err.message);
-    return [];
+  if(!lastBlock){
+   lastBlock = latest - 9
   }
+
+  // free RPC safe range
+  if(latest - lastBlock > 9){
+   lastBlock = latest - 9
+  }
+
+  const events = await contract.queryFilter(
+   contract.filters.PoolCreated(),
+   lastBlock,
+   latest
+  )
+
+  const signals=[]
+
+  for(const e of events){
+
+   signals.push({
+
+    type:"uniswap_pool_created",
+
+    token0:e.args.token0.toLowerCase(),
+
+    token1:e.args.token1.toLowerCase(),
+
+    pool:e.args.pool.toLowerCase(),
+
+    fee:Number(e.args.fee),
+
+    tx:e.transactionHash,
+
+    observed_at:e.blockNumber
+
+   })
+
+  }
+
+  lastBlock = latest
+
+  return signals
+
+ }
+
+ catch(err){
+
+  console.error("Uniswap scan error:",err.message)
+
+  return []
+
+ }
+
 }

@@ -1,41 +1,37 @@
 // utils/cache.js
 
-// Simple in-memory cache for signals API
-// Note: Ye process memory me rahega, Vercel / GitHub Action restart pe reset ho jayega.
+const CACHE = new Map();
 
-let CACHE = null;
+const DEFAULT_TTL = 30 * 1000; // 30 sec
 
-/**
- * Pura response object store karta hai
- * (agent, network, timestamp, signals, meta, etc.)
- */
-export function setCache(value) {
-  CACHE = {
-    ...value,
-    _cachedAt: Date.now(),
-  };
+export function setCache(key, value, ttl = DEFAULT_TTL) {
+  CACHE.set(key, {
+    value,
+    expireAt: Date.now() + ttl,
+  });
 }
 
-/**
- * Last cached value return karta hai
- * (null agar kuch nahi hai)
- */
-export function getCache() {
-  return CACHE;
+export function getCache(key) {
+  const entry = CACHE.get(key);
+
+  if (!entry) return null;
+
+  if (Date.now() > entry.expireAt) {
+    CACHE.delete(key);
+    return null;
+  }
+
+  return entry.value;
 }
 
-/**
- * Cache expiry check:
- * - true  => cache expire ho chuka, naya fetch karo (Dune + RPC, etc.)
- * - false => cache fresh hai, same response reuse karo
- *
- * Abhi 20 minutes TTL set hai.
- */
-export function isExpired() {
-  if (!CACHE || !CACHE._cachedAt) return true;
+export function isExpired(key) {
+  const entry = CACHE.get(key);
 
-  const ageMs = Date.now() - CACHE._cachedAt;
-  const twentyMinutes = 20 * 60 * 1000; // 20 minutes
+  if (!entry) return true;
 
-  return ageMs > twentyMinutes;
+  return Date.now() > entry.expireAt;
+}
+
+export function clearCache(key) {
+  CACHE.delete(key);
 }

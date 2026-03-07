@@ -9,39 +9,52 @@ const iface = new ethers.Interface([
 
 const topic = iface.getEvent("PoolCreated").topicHash
 
+let lastBlock = 0
+
 export async function getNewPools(){
 
  try{
 
   const latest = await provider.getBlockNumber()
 
-  const fromBlock = Math.max(latest - 20, 0)
+  let fromBlock = lastBlock || Math.max(latest - 9, 0)
+
+  if(latest - fromBlock > 9){
+   fromBlock = latest - 9
+  }
 
   const logs = await provider.getLogs({
    address: FACTORY,
    fromBlock,
    toBlock: latest,
-   topics: [topic]
+   topics:[topic]
   })
 
   const pools=[]
 
-  logs.forEach(log=>{
+  for(const log of logs){
 
    const parsed = iface.parseLog(log)
 
    pools.push({
     type:"uniswap_pool_created",
-    token0: parsed.args.token0.toLowerCase(),
-    token1: parsed.args.token1.toLowerCase(),
-    pool: parsed.args.pool.toLowerCase()
+    token0:parsed.args.token0.toLowerCase(),
+    token1:parsed.args.token1.toLowerCase(),
+    fee:Number(parsed.args.fee),
+    pool:parsed.args.pool.toLowerCase(),
+    tx:log.transactionHash,
+    observed_at:log.blockNumber
    })
 
-  })
+  }
+
+  lastBlock = latest
 
   return pools
 
- }catch(e){
+ }
+
+ catch(e){
 
   console.log("Uniswap scan error:",e.message)
 

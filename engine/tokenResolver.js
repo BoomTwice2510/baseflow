@@ -1,25 +1,35 @@
+import { isAddress } from "ethers"
+
+const BASE_TOKENS = new Set([
+ "0x4200000000000000000000000000000000000006", // WETH
+ "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca", // USDbC
+ "0x833589fcd6edb6e08f4c7c32d4f71b54bdA02913".toLowerCase(), // USDC
+])
+
 export function resolveToken(signal){
 
-  const isAddress = (v) =>
-    typeof v === "string" && v.startsWith("0x") && v.length === 42
+ const getAddr = (v) =>
+  typeof v === "string" && isAddress(v) ? v.toLowerCase() : null
 
-  if(isAddress(signal.contract))
-    return signal.contract.toLowerCase()
+ const candidates = [
+  getAddr(signal.contract),
+  getAddr(signal.token),
+  getAddr(signal.contract_address),
+  getAddr(signal.token_address),
+  getAddr(signal.baseToken?.address)
+ ]
 
-  if(isAddress(signal.token))
-    return signal.token.toLowerCase()
+ for(const c of candidates){
+  if(c && !BASE_TOKENS.has(c)){
+   return c
+  }
+ }
 
-  if(isAddress(signal.baseToken?.address))
-    return signal.baseToken.address.toLowerCase()
+ const t0 = getAddr(signal.token0)
+ const t1 = getAddr(signal.token1)
 
-  const blacklist = ["weth","usdc","base"]
+ if(t0 && !BASE_TOKENS.has(t0)) return t0
+ if(t1 && !BASE_TOKENS.has(t1)) return t1
 
-  if(signal.token0 && !blacklist.includes(signal.token0.toLowerCase()))
-    return signal.token0.toLowerCase()
-
-  if(signal.token1 && !blacklist.includes(signal.token1.toLowerCase()))
-    return signal.token1.toLowerCase()
-
-  return null
-
+ return null
 }

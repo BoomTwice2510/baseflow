@@ -1,70 +1,79 @@
 export function buildSignals({ pairs = [], gas = {}, pools = [] }) {
 
-  const signals = []
+ const signals = []
 
-  const blacklist = ["BASE","WETH","USDC"]
+ const BASE_TOKENS = new Set([
+  "0x4200000000000000000000000000000000000006", // WETH
+  "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", // USDC
+ ])
 
-  const seenTokens = new Set()
+ const seenTokens = new Set()
 
-  const gasPrice = gas?.gas || 0
+ const gasPrice = gas?.gas || 0
 
-  pairs.forEach(pair => {
+ const now = new Date().toISOString()
 
-    const base = pair?.baseToken?.symbol?.toUpperCase()
-    const baseAddress = pair?.baseToken?.address
-    const quote = pair?.quoteToken?.symbol?.toUpperCase()
+ pairs.forEach(pair => {
 
-    if (!base || !baseAddress) return
+  const baseAddr = pair?.baseToken?.address?.toLowerCase()
+  const quoteAddr = pair?.quoteToken?.address?.toLowerCase()
 
-    if (blacklist.includes(base) || blacklist.includes(quote)) return
+  if(!baseAddr || !quoteAddr) return
 
-    if (seenTokens.has(baseAddress)) return
-    seenTokens.add(baseAddress)
+  if(BASE_TOKENS.has(baseAddr) && BASE_TOKENS.has(quoteAddr)) return
 
-    const liquidity = pair?.liquidity?.usd || 0
-    const volume = pair?.volume?.h24 || 0
+  if(seenTokens.has(baseAddr)) return
+  seenTokens.add(baseAddr)
 
-    if (liquidity > 200000 && liquidity < 2000000) {
+  const liquidity = pair?.liquidity?.usd || 0
+  const volume = pair?.volume?.h24 || 0
 
-      signals.push({
-        type: "liquidity_added",
-        token: baseAddress,
-        liquidity
-      })
+  if(liquidity > 200000){
 
-    }
-
-    if (volume > 200000) {
-
-      signals.push({
-        type: "volume_spike",
-        token: baseAddress,
-        volume
-      })
-
-    }
-
-  })
-
-  if (gasPrice > 5e9) {
-
-    signals.push({
-      type: "gas_spike",
-      gas: gasPrice
-    })
+   signals.push({
+    type:"liquidity_added",
+    token:baseAddr,
+    liquidity,
+    observed_at:now
+   })
 
   }
 
-  pools.forEach(pool => {
+  if(volume > 200000){
 
-    signals.push({
-      type: "uniswap_pool_created",
-      token0: pool.token0,
-      token1: pool.token1,
-      pool: pool.pool
-    })
+   signals.push({
+    type:"volume_spike",
+    token:baseAddr,
+    volume,
+    observed_at:now
+   })
 
+  }
+
+ })
+
+ if(gasPrice > 1e9){
+
+  signals.push({
+   type:"gas_spike",
+   gas:gasPrice,
+   observed_at:now
   })
 
-  return signals
+ }
+
+ pools.forEach(pool => {
+
+  signals.push({
+   type:"uniswap_pool_created",
+   token0:pool.token0,
+   token1:pool.token1,
+   pool:pool.pool,
+   observed_at:now
+  })
+
+ })
+
+ return signals
+
 }

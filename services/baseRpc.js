@@ -1,27 +1,28 @@
 import { JsonRpcProvider } from "ethers"
 
 const RPC_URL =
-  process.env.BASE_RPC_URL ||
-  "https://mainnet.base.org"
+ process.env.BASE_RPC_URL ||
+ "https://base.llamarpc.com"
 
 export const provider = new JsonRpcProvider(RPC_URL)
 
-export async function getGasPrice() {
+export async function getGasPrice(){
 
-  try {
+ try{
 
-    const fee = await provider.getFeeData()
+  const fee = await provider.getFeeData()
 
-    return {
-      gas: Number(fee.gasPrice || fee.maxFeePerGas || 0)
-    }
-
-  } catch (err) {
-
-    console.error("Gas fetch error:", err.message)
-
-    return {}
-
+  return {
+   gas: Number(fee.gasPrice || fee.maxFeePerGas || 0)
   }
+
+ }
+ catch(err){
+
+  console.error("Gas fetch error:", err.message)
+
+  return {}
+
+ }
 
 }

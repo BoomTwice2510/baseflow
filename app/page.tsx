@@ -95,11 +95,11 @@ export default function HomePage() {
     return () => clearInterval(id);
   }, [autoRefresh]);
 
-  useEffect(() => {
-    if (!loading) {
-      sdk.actions.ready().catch(() => {});
-    }
-  }, [loading]);
+          // useEffect(() => {
+        // if (!loading) {
+      // sdk.actions.ready().catch(() => {});
+    // }
+  // }, [loading]);
 
   const signals: Signal[] = data?.signals || [];
   const meta = data?.meta || {};

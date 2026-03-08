@@ -228,16 +228,22 @@ export async function GET(request) {
    })
     .slice(0, limit)
 
-    // ===== AGE FILTER: last 30 minutes only =====
-    const MAX_AGE_MS = 30 * 60 * 1000
-    const nowTs = Date.now()
+   // ===== AGE FILTER: window per type =====
+    const nowTs = Date.now();
+    const HOLDER_MAX = 2 * 60 * 60 * 1000;   // 2 hours
+    const WHALE_MAX  = 24 * 60 * 60 * 1000;  // 24 hours
+    const DEFAULT_MAX = 6 * 60 * 60 * 1000;  // 6 hours
 
-    signals = signals.filter(s => {
-    if (!s.observed_at) return false
-    const age = nowTs - new Date(s.observed_at).getTime()
-    return age <= MAX_AGE_MS
-    })
+    signals = signals.filter((s) => {
+    if (!s.observed_at) return false;
+    const age = nowTs - new Date(s.observed_at).getTime();
 
+    if (s.type === "holder_spike") return age <= HOLDER_MAX;
+    if (s.type === "whale_tx") return age <= WHALE_MAX;
+
+   // volume_spike, smart_money_buy, multi_whale, etc.
+    return age <= DEFAULT_MAX;
+    });
 
     // ================= DEBUG =================
     if(process.env.DEBUG === "true"){

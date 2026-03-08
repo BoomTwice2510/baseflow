@@ -12,7 +12,6 @@ const MAX_MEMORY = 3000;
 
 // dedupe protection
 function isNewSignal(s) {
-
   const id =
     s.tx ||
     s.contract ||
@@ -35,52 +34,58 @@ function isNewSignal(s) {
 
 // format telegram message
 function formatSignal(s) {
-
   if (s.type === "whale_tx") {
-
     const amt = Number(s.amount || 0);
 
     return `🐋 WHALE MOVE
+
 💰 ${amt.toFixed(2)} ETH
-👛 ${(s.wallet || "").slice(0,10)}...
-🔗 https://basescan.org/tx/${s.tx}`;
+👛 ${(s.wallet || "").slice(0, 10)}...
+🔗 <a href="https://basescan.org/tx/${s.tx}">View on BaseScan</a>`;
   }
 
   if (s.type === "volume_spike") {
-
     const vol = Number(s.volume ?? s.amount ?? 0);
 
     return `📈 VOLUME SPIKE
+
 💰 $${Math.round(vol).toLocaleString()}
 🪙 ${s.token || ""}`;
   }
 
   if (s.type === "smart_money_buy") {
-
     const amt = Number(s.amount || 0);
 
     return `🧠 SMART MONEY BUY
-👛 ${(s.wallet || "").slice(0,12)}...
+
+👛 ${(s.wallet || "").slice(0, 12)}...
 🪙 ${s.token}
 💰 $${Math.round(amt).toLocaleString()}
-🔗 https://basescan.org/tx/${s.tx}`;
+🔗 <a href="https://basescan.org/tx/${s.tx}">View on BaseScan</a>`;
   }
 
   if (s.type === "multi_whale") {
-
     const vol = Number(s.volume || 0);
 
     return `🐳 MULTI WHALE
+
 🪙 ${s.token}
 🐋 Whales ${s.whales}
 💰 $${Math.round(vol).toLocaleString()}`;
   }
 
   if (s.type === "holder_spike") {
+    const token = s.token;
+    const growth = Number(s.growth || 0).toFixed(2);
+    const holders = s.holders_1h || 0;
 
     return `📈 HOLDER SPIKE
-🪙 ${s.token}
-👥 Growth ${s.growth}%`;
+
+🪙 Token: <code>${token.slice(0, 6)}...${token.slice(-4)}</code>
+👥 Holders (1h): ${holders}
+📊 Growth: ${growth}%
+
+🔗 <a href="https://basescan.org/token/${token}">View on BaseScan</a>`;
   }
 
   return `⚡ ${s.type}`;
@@ -88,22 +93,20 @@ function formatSignal(s) {
 
 // telegram sender with retry
 async function sendTelegram(text, retry = 2) {
-
   const url = `https://api.telegram.org/bot${BOT}/sendMessage`;
 
   try {
-
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: CHAT,
-        text
+        text,
+        parse_mode: "HTML"
       })
     });
 
     if (!res.ok) {
-
       const err = await res.text();
 
       if (res.status === 429 && retry > 0) {
@@ -113,20 +116,16 @@ async function sendTelegram(text, retry = 2) {
 
       console.error("Telegram error:", err);
     }
-
   } catch (err) {
     console.error("Telegram send failed:", err);
   }
-
 }
 
 // high conviction detection
 function detectHighConviction(signals) {
-
   const tokenMap = {};
 
   for (const s of signals) {
-
     const token = s.token || s.contract;
 
     if (!token) continue;
@@ -139,9 +138,7 @@ function detectHighConviction(signals) {
   const alerts = [];
 
   for (const token in tokenMap) {
-
     const group = tokenMap[token];
-
     const types = new Set(group.map(s => s.type));
 
     if (
@@ -149,7 +146,6 @@ function detectHighConviction(signals) {
       (types.has("multi_whale") && types.has("volume_spike")) ||
       (types.has("smart_money_buy") && types.has("whale_tx"))
     ) {
-
       alerts.push({
         token,
         signals: group
@@ -162,17 +158,14 @@ function detectHighConviction(signals) {
 
 // split large messages
 function splitMessages(text) {
-
   const limit = 3500;
 
   if (text.length < limit) return [text];
 
   const parts = [];
-
   let chunk = "";
 
   for (const line of text.split("\n")) {
-
     if ((chunk + line).length > limit) {
       parts.push(chunk);
       chunk = "";
@@ -188,10 +181,8 @@ function splitMessages(text) {
 
 // worker
 async function run() {
-
   try {
-
-    const res = await fetch(SIGNAL_URL);
+    const res = await fetch(`${SIGNAL_URL}/api/signals?nocache=${Date.now()}`);
 
     if (!res.ok) {
       console.error("Signal API error:", res.status);
@@ -205,7 +196,6 @@ async function run() {
     const batch = [];
 
     for (const s of signals) {
-
       if (!isNewSignal(s)) continue;
 
       if ((s.score || 0) < 4) continue;
@@ -217,7 +207,6 @@ async function run() {
     const alerts = detectHighConviction(signals);
 
     for (const a of alerts) {
-
       const msg = `🔥 HIGH CONVICTION SIGNAL
 
 Token: ${a.token}
@@ -235,9 +224,9 @@ ${a.signals.map(s => "• " + s.type).join("\n")}
       return;
     }
 
-    const finalMessage = `⚡ BASEFLOW SIGNALS
+    const finalMessage = `⚡ BASEFLOW SIGNALS – BASE
 
-${batch.join("\n\n")}
+${batch.join("\n\n────────────────────\n\n")}
 
 ⚡ BaseFlow`;
 
@@ -246,7 +235,6 @@ ${batch.join("\n\n")}
     for (const p of parts) {
       await sendTelegram(p);
     }
-
   } catch (err) {
     console.error("Worker error:", err);
   }

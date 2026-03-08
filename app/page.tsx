@@ -3,6 +3,22 @@
 import { useEffect, useState, useMemo } from "react";
 import { sdk } from "@farcaster/miniapp-sdk";
 
+function formatTime(ts?: string) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return ts;
+
+  // IST offset
+  const opts: Intl.DateTimeFormatOptions = {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "short"
+  };
+
+  return d.toLocaleString("en-IN", opts);
+}
+
 type Signal = {
   id?: string;
   type: string;
@@ -18,6 +34,13 @@ type Signal = {
   token?: string;
   tx?: string;
   meta?: any;
+
+  // extra Dune fields
+  holders_1h?: number;
+  growth?: number;
+  volume?: number;
+  whales?: number;
+  to?: string;
 };
 
 type TabKey = "all" | "whale" | "volume" | "dex" | "rpc";
@@ -26,7 +49,10 @@ const TYPE_LABELS: Record<string, string> = {
   whale_tx: "Whale",
   volume_spike: "Volume",
   dex_signal: "DEX",
-  rpc_signal: "RPC"
+  rpc_signal: "RPC",
+  smart_money_buy: "Smart Money",
+  multi_whale: "Multi Whale",
+  holder_spike: "Holder Spike"
 };
 
 // tab priority for ordering
@@ -85,8 +111,14 @@ export default function HomePage() {
         if (!cat) {
           if (s.type === "whale_tx") cat = "whale";
           else if (s.type === "volume_spike") cat = "volume";
-          else if (s.type.startsWith("dex")) cat = "dex";
-          else if (s.type.startsWith("rpc")) cat = "rpc";
+          else if (
+            s.type.startsWith("dex") ||
+            s.type === "liquidity_added" ||
+            s.type === "uniswap_pool_created"
+          )
+            cat = "dex";
+          else if (s.type.startsWith("rpc") || s.type === "gas_spike")
+            cat = "rpc";
         }
         return { ...s, category: cat };
       }),
@@ -124,8 +156,7 @@ export default function HomePage() {
   const dex = normalizedSignals.filter((s) => s.category === "dex");
   const rpc = normalizedSignals.filter((s) => s.category === "rpc");
 
- const lastUpdatedRaw =
-    data?.timestamp ?? signals[0]?.observed_at ?? null;
+  const lastUpdatedRaw = data?.timestamp ?? signals[0]?.observed_at ?? null;
 
   const lastUpdatedString =
     lastUpdatedRaw == null
@@ -142,7 +173,8 @@ export default function HomePage() {
         minHeight: "100vh",
         padding: 16,
         fontFamily: "system-ui",
-        background: "radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%)",
+        background:
+          "radial-gradient(circle at top, #020617 0, #020617 40%, #020617 100%)",
         color: "#e5e7eb",
         position: "relative",
         margin: "0 auto",
@@ -267,9 +299,7 @@ export default function HomePage() {
                     }}
                   >
                     Agent ID:{" "}
-                    <span style={{ fontFamily: "monospace" }}>
-                      2387
-                    </span>
+                    <span style={{ fontFamily: "monospace" }}>2387</span>
                   </span>
                   <a
                     href="https://www.8004scan.io/agents/base/2387"
@@ -348,14 +378,11 @@ export default function HomePage() {
               Network: <strong>Base</strong> · Signals:{" "}
               <strong>{meta.filtered_count ?? signals.length}</strong>
             </span>
-                        <span style={{ opacity: 0.7 }}>
-              Updated: {lastUpdatedString}
-            </span>
-
+            <span style={{ opacity: 0.7 }}>Updated: {lastUpdatedString}</span>
           </div>
         </header>
 
-        {/* SUMMARY – top cards ab empty feel nahi karenge */}
+        {/* SUMMARY */}
         <section
           style={{
             display: "grid",
@@ -391,7 +418,7 @@ export default function HomePage() {
           />
         </section>
 
-        {/* FILTER TABS – full width, no extra space right side */}
+        {/* FILTER TABS */}
         <section
           style={{
             marginBottom: 12,
@@ -489,13 +516,23 @@ export default function HomePage() {
               const isWhale = s.category === "whale";
               const isVolume = s.category === "volume";
               const isDeploy =
-                s.type === "deploy" || s.type?.toLowerCase().includes("deploy");
+                s.type === "deploy" ||
+                s.type?.toLowerCase().includes("deploy");
+              const isHolder = s.type === "holder_spike";
+              const isSmart = s.type === "smart_money_buy";
+              const isMulti = s.type === "multi_whale";
 
               const title =
                 s.type === "whale_tx"
                   ? "Whale Transaction"
                   : s.type === "volume_spike"
                   ? "Volume Spike"
+                  : s.type === "holder_spike"
+                  ? "Holder Spike"
+                  : s.type === "smart_money_buy"
+                  ? "Smart Money Buy"
+                  : s.type === "multi_whale"
+                  ? "Multi Whale Cluster"
                   : TYPE_LABELS[s.type] || s.type;
 
               const borderColor = isWhale
@@ -504,6 +541,12 @@ export default function HomePage() {
                 ? "rgba(129,140,248,1)"
                 : isVolume
                 ? "rgba(234,179,8,1)"
+                : isHolder
+                ? "rgba(52,211,153,1)"
+                : isSmart
+                ? "rgba(244,114,182,1)"
+                : isMulti
+                ? "rgba(248,113,113,1)"
                 : "rgba(37,99,235,1)";
 
               const glowColor = isWhale
@@ -512,7 +555,47 @@ export default function HomePage() {
                 ? "rgba(129,140,248,0.8)"
                 : isVolume
                 ? "rgba(234,179,8,0.75)"
+                : isHolder
+                ? "rgba(52,211,153,0.75)"
+                : isSmart
+                ? "rgba(244,114,182,0.8)"
+                : isMulti
+                ? "rgba(248,113,113,0.85)"
                 : "rgba(37,99,235,0.75)";
+
+              const shortToken = (addr?: string) =>
+                addr
+                  ? `${addr.slice(0, 6)}...${addr.slice(-4)}`
+                  : undefined;
+
+              // main description per type
+              let mainText: string | undefined = s.description;
+              if (!mainText) {
+                if (s.type === "whale_tx") {
+                  mainText = `${(s.amount || 0).toFixed(
+                    2
+                  )} ETH whale move on Base`;
+                } else if (s.type === "volume_spike") {
+                  const vol = s.volume ?? s.amount ?? 0;
+                  mainText = `Volume spike: $${Math.round(
+                    vol
+                  ).toLocaleString()} traded`;
+                } else if (s.type === "holder_spike") {
+                  mainText = `Holder spike detected on ${shortToken(
+                    s.token
+                  )}`;
+                } else if (s.type === "smart_money_buy") {
+                  mainText = `Smart money buying ${shortToken(
+                    s.token
+                  )} on Base`;
+                } else if (s.type === "multi_whale") {
+                  mainText = `Clustered whale activity on ${shortToken(
+                    s.token
+                  )}`;
+                } else if (isDeploy) {
+                  mainText = `New token deployed: ${shortToken(s.contract)}`;
+                }
+              }
 
               return (
                 <article
@@ -579,7 +662,16 @@ export default function HomePage() {
                         {isWhale && "🐋"}
                         {isDeploy && "🧬"}
                         {isVolume && "📈"}
-                        {!isWhale && !isDeploy && !isVolume && "🔍"}
+                        {isHolder && "👥"}
+                        {isSmart && "🧠"}
+                        {isMulti && "🐳"}
+                        {!isWhale &&
+                          !isDeploy &&
+                          !isVolume &&
+                          !isHolder &&
+                          !isSmart &&
+                          !isMulti &&
+                          "🔍"}
                       </span>
                       <span>{title}</span>
                     </div>
@@ -606,41 +698,157 @@ export default function HomePage() {
                   </div>
 
                   {/* main body */}
-                  <div style={{ fontSize: 13, marginBottom: 6 }}>
-                    {s.description ||
-                      (isWhale &&
-                        `${(s.amount || 0).toFixed(2)} ETH whale move`) ||
-                      (isDeploy && `New token deployed: ${s.contract}`) ||
-                      (isVolume &&
-                        `Volume spike: ${s.amount?.toLocaleString()} USD`) ||
-                      ""}
-                  </div>
+                  {mainText && (
+                    <div style={{ fontSize: 13, marginBottom: 6 }}>
+                      {mainText}
+                    </div>
+                  )}
 
                   {/* details */}
                   <div style={{ fontSize: 11, opacity: 0.9 }}>
-                    {s.wallet && (
+                    {/* holder_spike specific */}
+                    {isHolder && (
+                      <>
+                        {s.holders_1h != null && (
+                          <div>Holders (1h): {s.holders_1h}</div>
+                        )}
+                        {s.growth != null && (
+                          <div>
+                            Growth:{" "}
+                            {Number(s.growth || 0).toFixed(2)}
+                            %
+                          </div>
+                        )}
+                        {s.token && (
+                          <div>
+                            Token:{" "}
+                            <span style={{ fontFamily: "monospace" }}>
+                              {shortToken(s.token)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* whale_tx */}
+                    {s.type === "whale_tx" && (
+                      <>
+                        {s.amount != null && (
+                          <div>Amount: {Number(s.amount).toFixed(2)} ETH</div>
+                        )}
+                        {s.wallet && (
+                          <div>
+                            From:{" "}
+                            <span style={{ fontFamily: "monospace" }}>
+                              {shortToken(s.wallet)}
+                            </span>
+                          </div>
+                        )}
+                        {s.to && (
+                          <div>
+                            To:{" "}
+                            <span style={{ fontFamily: "monospace" }}>
+                              {shortToken(s.to as string)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* volume_spike */}
+                    {s.type === "volume_spike" && (
+                      <>
+                        {s.volume != null && (
+                          <div>
+                            Volume: $
+                            {Math.round(s.volume).toLocaleString()}
+                          </div>
+                        )}
+                        {s.token && (
+                          <div>
+                            Token:{" "}
+                            <span style={{ fontFamily: "monospace" }}>
+                              {s.token}
+                            </span>
+                          </div>
+                        )}
+                        {s.wallet && (
+                          <div>
+                            Taker:{" "}
+                            <span style={{ fontFamily: "monospace" }}>
+                              {shortToken(s.wallet)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* smart_money_buy */}
+                    {isSmart && (
+                      <>
+                        {s.amount != null && (
+                          <div>
+                            Size: $
+                            {Math.round(s.amount).toLocaleString()}
+                          </div>
+                        )}
+                        {s.wallet && (
+                          <div>
+                            Wallet:{" "}
+                            <span style={{ fontFamily: "monospace" }}>
+                              {shortToken(s.wallet)}
+                            </span>
+                          </div>
+                        )}
+                        {s.token && (
+                          <div>
+                            Token:{" "}
+                            <span style={{ fontFamily: "monospace" }}>
+                              {shortToken(s.token)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* multi_whale */}
+                    {isMulti && (
+                      <>
+                        {s.whales != null && (
+                          <div>Whales: {s.whales}</div>
+                        )}
+                        {s.volume != null && (
+                          <div>
+                            Cluster volume: $
+                            {Math.round(s.volume).toLocaleString()}
+                          </div>
+                        )}
+                        {s.token && (
+                          <div>
+                            Token:{" "}
+                            <span style={{ fontFamily: "monospace" }}>
+                              {shortToken(s.token)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* generic fields */}
+                    {s.wallet && !isWhale && !isVolume && !isSmart && !isMulti && (
                       <div>
                         Wallet:{" "}
                         <span style={{ fontFamily: "monospace" }}>
-                          {s.wallet.slice(0, 10)}...
-                        </span>
-                      </div>
-                    )}
-
-                    {s.creator && (
-                      <div>
-                        Creator:{" "}
-                        <span style={{ fontFamily: "monospace" }}>
-                          {s.creator.slice(0, 10)}...
+                          {shortToken(s.wallet)}
                         </span>
                       </div>
                     )}
 
                     {s.contract && (
                       <div>
-                        Token:{" "}
+                        Contract:{" "}
                         <span style={{ fontFamily: "monospace" }}>
-                          {s.contract.slice(0, 10)}...
+                          {shortToken(s.contract)}
                         </span>
                       </div>
                     )}
@@ -670,7 +878,7 @@ export default function HomePage() {
                         marginTop: 6
                       }}
                     >
-                      {s.observed_at}
+                      {formatTime(s.observed_at)}
                     </div>
                   )}
                 </article>

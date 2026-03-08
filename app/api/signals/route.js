@@ -17,21 +17,22 @@ import { applySignalCorrelation } from "../../../engine/correlationEngine.js"
 import {
   getCache,
   setCache,
-  isExpired
+  isExpired,
+  clearCache
 } from "../../../utils/cache.js"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request) {
-
+ // clearCache("signals")
   try {
 
     // ================= CACHE =================
-    const cached = getCache()
+    const cached = getCache("signals")
 
-    if (cached && !isExpired()) {
-      return Response.json(cached)
-    }
+    if (cached && !isExpired("signals")) {
+    return Response.json(cached)
+}
 
     // ================= CONFIG =================
     const MAX_WHALE = parseInt(process.env.MAX_WHALE_SIGNALS || "5")
@@ -109,19 +110,18 @@ export async function GET(request) {
     ] = await Promise.all(fetches)
 
     // ================= WHALE FILTER =================
-const whaleBlacklist = [
- "0x4200000000000000000000000000000000000010",
- "0x4200000000000000000000000000000000000006"
-]
+      const whaleBlacklist = [
+      "0x4200000000000000000000000000000000000010",
+      "0x4200000000000000000000000000000000000006"
+    ]
 
-const seenWallets = new Set()
+      const seenWallets = new Set()
+      const seenTx = new Set()
 
-const seenTx = new Set()
-
-const whaleFiltered =
-  whaleSignals
-    .sort((a,b) => (b.amount || 0) - (a.amount || 0))
-    .filter(w => {
+      const whaleFiltered =
+      whaleSignals
+      .sort((a,b) => (b.amount || 0) - (a.amount || 0))
+      .filter(w => {
 
       if (!w.wallet) return false
       if (!w.tx) return false
@@ -129,10 +129,14 @@ const whaleFiltered =
       const wallet = String(w.wallet).toLowerCase()
       const to = String(w.to || "").toLowerCase()
 
+      // blacklist
       if (whaleBlacklist.includes(wallet)) return false
 
-      // remove self / routing transfers
+      // self transfer
       if (wallet === to) return false
+
+      // remove contract/router spam
+      if (to.startsWith("0x000000")) return false
 
       // remove duplicate tx
       if (seenTx.has(w.tx)) return false
@@ -141,6 +145,7 @@ const whaleFiltered =
       // remove wallet spam
       if (seenWallets.has(wallet)) return false
       seenWallets.add(wallet)
+
       return true
 
     })
@@ -213,7 +218,14 @@ const whaleFiltered =
     // ===== SORT BY SCORE =====
 
    signals = signals
-  .sort((a,b)=>(b.score||0)-(a.score||0))
+  .sort((a,b) => {
+
+    const scoreDiff = (b.score || 0) - (a.score || 0)
+    if (scoreDiff !== 0) return scoreDiff
+
+    return new Date(b.observed_at || 0) - new Date(a.observed_at || 0)
+
+  })
   .slice(0, limit)
 
     // ================= DEBUG =================
@@ -291,9 +303,13 @@ const whaleFiltered =
     }
 
     // ================= CACHE SAVE =================
-    setCache(response)
+    setCache("signals", response)
 
-    return Response.json(response)
+    return Response.json(response, {
+    headers: { 
+    'Cache-Control': 's-maxage=15, stale-while-revalidate' 
+  }
+})
 
   }
 

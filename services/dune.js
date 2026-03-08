@@ -75,7 +75,6 @@ export async function getWhaleSignals(){
  const seen = new Set()
 
  return rows
-  .filter(r => Number(r.eth_amount || 0) > 50)
   .filter(r => !seen.has(r.hash) && seen.add(r.hash))
   .map(r => ({
 

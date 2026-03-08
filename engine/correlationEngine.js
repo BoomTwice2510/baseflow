@@ -39,8 +39,12 @@ export function applySignalCorrelation(signals){
    bonus += 4
   }
 
-  if(recent.filter(s=>s.type==="holder_spike").length >=2){
-   bonus += 2
+  if(types.has("whale_tx") && types.has("smart_money_buy")){
+   bonus += 4
+  }
+
+  if(types.has("holder_spike") && types.has("volume_spike")){
+   bonus += 3
   }
 
   if(bonus>0){

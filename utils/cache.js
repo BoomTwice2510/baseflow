@@ -2,7 +2,7 @@
 
 const CACHE = new Map();
 
-const DEFAULT_TTL = 30 * 1000; // 30 sec
+const DEFAULT_TTL = 15 * 1000; // 15 sec
 
 export function setCache(key, value, ttl = DEFAULT_TTL) {
   CACHE.set(key, {

@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 const BOT = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT = process.env.TELEGRAM_CHAT_ID;
 const SIGNAL_URL = process.env.SIGNAL_AGENT_URL;

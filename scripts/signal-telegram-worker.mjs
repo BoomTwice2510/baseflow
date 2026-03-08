@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import dotenv from "dotenv";
+dotenv.config();
 
 const BOT = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT = process.env.TELEGRAM_CHAT_ID;

@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -18,10 +17,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'pnpm'        # agar pnpm use kar rahe ho to
+
+      - name: Install deps
+        run: |
+          corepack enable      # optional but recommended for pnpm
+          pnpm install
 
       - name: Run worker
         run: node scripts/signal-telegram-worker.mjs
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          SIGNAL_AGENT_URL: ${{ secrets.SIGNAL_AGENT_URL }}
+          SIGNAL_URL: ${{ secrets.SIGNAL_URL }}

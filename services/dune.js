@@ -118,21 +118,21 @@ export async function getVolumeSignals(){
 // Smart money buys
 export async function getSmartMoneySignals(){
 
- const rows = await getLatestRows(6791926)
+  const rows = await getLatestRows(6791926);
 
- return rows
-  .filter(r => r.token_bought_symbol !== "USDC")
-  .map(r => ({
+  console.log("DUNE SMART ROWS:", rows.length, rows[0]);
 
-   type:"smart_money_buy",
-   wallet:r.taker,
-   token:r.token_bought_symbol,
-   amount:Number(r.usd_value || 0),
-   tx:r.tx_hash,
-   observed_at:r.block_time,
-   source:"dune_smart_money"
-
-  }))
+  return rows
+    .filter(r => !["USDC", "USDT"].includes(r.token_bought_symbol)) // stables drop
+    .map(r => ({
+      type:"smart_money_buy",
+      wallet:r.taker,
+      token:r.token_bought_symbol,
+      amount:Number(r.usd_value || 0),
+      tx:r.tx_hash,
+      observed_at:r.block_time,
+      source:"dune_smart_money"
+    }));
 }
 
 

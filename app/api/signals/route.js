@@ -217,16 +217,27 @@ export async function GET(request) {
 
     // ===== SORT BY SCORE =====
 
-   signals = signals
-  .sort((a,b) => {
+    signals = signals
+    .sort((a,b) => {
 
     const scoreDiff = (b.score || 0) - (a.score || 0)
     if (scoreDiff !== 0) return scoreDiff
 
     return new Date(b.observed_at || 0) - new Date(a.observed_at || 0)
 
-  })
-  .slice(0, limit)
+   })
+    .slice(0, limit)
+
+    // ===== AGE FILTER: last 30 minutes only =====
+    const MAX_AGE_MS = 30 * 60 * 1000
+    const nowTs = Date.now()
+
+    signals = signals.filter(s => {
+    if (!s.observed_at) return false
+    const age = nowTs - new Date(s.observed_at).getTime()
+    return age <= MAX_AGE_MS
+    })
+
 
     // ================= DEBUG =================
     if(process.env.DEBUG === "true"){

@@ -95,11 +95,29 @@ export default function HomePage() {
     return () => clearInterval(id);
   }, [autoRefresh]);
 
-          // useEffect(() => {
-        // if (!loading) {
-      // sdk.actions.ready().catch(() => {});
-    // }
-  // }, [loading]);
+    useEffect(() => {
+    let cancelled = false;
+
+    async function init() {
+      try {
+        // thoda delay taaki UI mount ho jaye
+        await new Promise((r) => setTimeout(r, 50));
+        if (cancelled) return;
+
+        console.log("calling sdk.actions.ready()");
+        await sdk.actions.ready();
+      } catch (e) {
+        console.error("miniapp ready failed", e);
+      }
+    }
+
+    init();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   const signals: Signal[] = data?.signals || [];
   const meta = data?.meta || {};

@@ -44,14 +44,19 @@ export default function RootLayout({
           background: "#020617",
           color: "#f9fafb",
           fontFamily:
-            "system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "flex-start",
-          minHeight: "100vh"
+            "system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
         }}
       >
-        {children}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-start",
+            minHeight: "100vh"
+          }}
+        >
+          {children}
+        </div>
       </body>
     </html>
   );

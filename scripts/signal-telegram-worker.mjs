@@ -5,6 +5,12 @@ const BOT = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT = process.env.TELEGRAM_CHAT_ID;
 const SIGNAL_URL = process.env.SIGNAL_AGENT_URL;
 
+console.log("DEBUG ENVS:", {
+  TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+  TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID,
+  SIGNAL_AGENT_URL: process.env.SIGNAL_AGENT_URL,
+});
+
 if (!BOT || !CHAT || !SIGNAL_URL) {
   console.error("Missing env variables");
   process.exit(1);

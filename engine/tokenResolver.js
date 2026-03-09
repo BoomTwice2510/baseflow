@@ -16,7 +16,8 @@ export function resolveToken(signal){
   getAddr(signal.token),
   getAddr(signal.contract_address),
   getAddr(signal.token_address),
-  getAddr(signal.baseToken?.address)
+  getAddr(signal.baseToken?.address),
+  getAddr(signal.token_bought_address)
  ]
 
  for(const c of candidates){

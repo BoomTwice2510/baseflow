@@ -111,15 +111,15 @@ async function sendTelegram(text, retry = 2) {
       body: JSON.stringify({
         chat_id: CHAT,
         text,
-        parse_mode: "HTML"
-      })
+        parse_mode: "HTML",
+      }),
     });
 
     if (!res.ok) {
       const err = await res.text();
 
       if (res.status === 429 && retry > 0) {
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 2000));
         return sendTelegram(text, retry - 1);
       }
 
@@ -148,7 +148,7 @@ function detectHighConviction(signals) {
 
   for (const token in tokenMap) {
     const group = tokenMap[token];
-    const types = new Set(group.map(s => s.type));
+    const types = new Set(group.map((s) => s.type));
 
     if (
       (types.has("smart_money_buy") && types.has("volume_spike")) ||
@@ -157,7 +157,7 @@ function detectHighConviction(signals) {
     ) {
       alerts.push({
         token,
-        signals: group
+        signals: group,
       });
     }
   }
@@ -199,16 +199,23 @@ async function run() {
     }
 
     const data = await res.json();
-
     const signals = data.signals || [];
+
+    // --- TOP 3 HOLDER_SPIKE + OTHER SIGNALS ---
+    const holderSpikes = signals
+      .filter((s) => s.type === "holder_spike")
+      .sort((a, b) => (b.growth || 0) - (a.growth || 0))
+      .slice(0, 3);
+
+    const otherSignals = signals.filter((s) => s.type !== "holder_spike");
+
+    const finalSignals = [...holderSpikes, ...otherSignals];
 
     const batch = [];
 
-    for (const s of signals) {
+    for (const s of finalSignals) {
       if (!isNewSignal(s)) continue;
-
       if ((s.score || 0) < 4) continue;
-
       batch.push(formatSignal(s));
     }
 
@@ -221,7 +228,7 @@ async function run() {
 Token: ${a.token}
 
 Signals:
-${a.signals.map(s => "• " + s.type).join("\n")}
+${a.signals.map((s) => "• " + s.type).join("\n")}
 
 ⚡ BaseFlow`;
 

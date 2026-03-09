@@ -27,4 +27,4 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          SIGNAL_AGENT_URL: ${{ secrets.SIGNAL_URL }}
+          SIGNAL_AGENT_URL: ${{ secrets.SIGNAL_AGENT_URL }}

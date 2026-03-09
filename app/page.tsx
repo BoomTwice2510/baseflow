@@ -3,6 +3,54 @@
 import { useEffect, useState, useMemo } from "react";
 import { sdk } from "@farcaster/miniapp-sdk";
 
+type GroupKey = "holders" | "whales" | "volume" | "smart" | "multi";
+
+type SnapshotGroups = {
+  holders: Signal[];
+  whales: Signal[];
+  volume: Signal[];
+  smart: Signal[];
+  multi: Signal[];
+};
+
+type SnapshotResponse = {
+  agent: string;
+  network: string;
+  timestamp: number;
+  groups: SnapshotGroups;
+  meta: {
+    counts: Record<GroupKey, number>;
+    limit: number;
+    timestamp: string;
+  };
+};
+
+type Signal = {
+  id?: string;
+  type: string;
+  observed_at?: string;
+  source?: string;
+  wallet?: string;
+  wallet_from?: string;
+  wallet_to?: string;
+  amount?: number;
+  amount_eth?: number;
+  usd_value?: number;
+  contract?: string;
+  token?: string;
+  symbol?: string;
+  tx?: string;
+  tx_hash?: string;
+  meta?: any;
+  holders_1h?: number;
+  holders_24h?: number;
+  growth?: number;
+  growth_percent?: number;
+  volume?: number;
+  whales?: number;
+  score?: number;
+};
+
 function formatTime(ts?: string) {
   if (!ts) return "";
   const d = new Date(ts);
@@ -18,163 +66,121 @@ function formatTime(ts?: string) {
   return d.toLocaleString("en-IN", opts);
 }
 
-type Signal = {
-  id?: string;
-  type: string;
-  category?: string;
-  description?: string;
-  confidence?: string;
-  observed_at?: string;
-  source?: string;
-  wallet?: string;
-  amount?: number;
-  creator?: string;
-  contract?: string;
-  token?: string;
-  tx?: string;
-  meta?: any;
-
-  holders_1h?: number;
-  growth?: number;
-  growth_percent?: number;
-  volume?: number;
-  whales?: number;
-  to?: string;
-  score?: number;
-};
-
-type TabKey = "all" | "whale" | "volume" | "dex" | "rpc";
-
-const TYPE_LABELS: Record<string, string> = {
-  whale_tx: "Whale",
-  volume_spike: "Volume",
-  dex_signal: "DEX",
-  rpc_signal: "RPC",
-  smart_money_buy: "Smart Money",
-  multi_whale: "Multi Whale",
-  holder_spike: "Holder Spike",
-};
-
-const TAB_PRIORITY: Record<TabKey, number> = {
-  all: 0,
-  whale: 1,
-  volume: 2,
-  dex: 3,
-  rpc: 4,
-};
+const GROUP_CONFIG: {
+  key: GroupKey;
+  label: string;
+  icon: string;
+  desc: string;
+}[] = [
+  {
+    key: "holders",
+    label: "Holders",
+    icon: "👥",
+    desc: "Fast holder growth",
+  },
+  {
+    key: "whales",
+    label: "Whales",
+    icon: "🐋",
+    desc: "Large ETH moves",
+  },
+  {
+    key: "volume",
+    label: "Volume",
+    icon: "📈",
+    desc: "Big trading spikes",
+  },
+  {
+    key: "smart",
+    label: "Smart",
+    icon: "🧠",
+    desc: "Smart wallets buying",
+  },
+  {
+    key: "multi",
+    label: "Clusters",
+    icon: "🐳",
+    desc: "Multi‑whale clusters",
+  },
+];
 
 export default function HomePage() {
-  const [data, setData] = useState<any>(null);
+  const [snapshot, setSnapshot] = useState<SnapshotResponse | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [activeGroup, setActiveGroup] = useState<GroupKey>("holders");
+  const [activeSignal, setActiveSignal] = useState<{
+    group: GroupKey;
+    signal: Signal;
+  } | null>(null);
 
-  async function loadSignals() {
+  async function loadSnapshot() {
     try {
       setLoading(true);
-      const res = await fetch("/api/signals", { cache: "no-store" });
-      const json = await res.json();
-      setData(json);
+      const res = await fetch("/api/snapshot?limit=5", {
+        cache: "no-store",
+      });
+      const json = (await res.json()) as SnapshotResponse;
+      setSnapshot(json);
     } catch (e) {
-      console.error("loadSignals error", e);
+      console.error("loadSnapshot error", e);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadSignals();
+    loadSnapshot();
   }, []);
 
   useEffect(() => {
     if (!autoRefresh) return;
     const id = setInterval(() => {
-      loadSignals();
-    }, 30000);
+      loadSnapshot();
+    }, 60000); // 60 sec
     return () => clearInterval(id);
   }, [autoRefresh]);
 
   useEffect(() => {
     let cancelled = false;
-
     async function init() {
       try {
         await new Promise((r) => setTimeout(r, 50));
         if (cancelled) return;
-
         await sdk.actions.ready();
       } catch (e) {
         console.error("miniapp ready failed", e);
       }
     }
-
     init();
-
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const signals: Signal[] = data?.signals || [];
-  const meta = data?.meta || {};
+  const groups = snapshot?.groups || {
+    holders: [],
+    whales: [],
+    volume: [],
+    smart: [],
+    multi: [],
+  };
 
-  const normalizedSignals = useMemo(
-    () =>
-      signals.map((s) => {
-        let cat = s.category as TabKey | undefined;
-        if (!cat) {
-          if (s.type === "whale_tx") cat = "whale";
-          else if (s.type === "volume_spike") cat = "volume";
-          else if (
-            s.type.startsWith("dex") ||
-            s.type === "liquidity_added" ||
-            s.type === "uniswap_pool_created"
-          )
-            cat = "dex";
-          else if (s.type.startsWith("rpc") || s.type === "gas_spike")
-            cat = "rpc";
-        }
-        return { ...s, category: cat };
-      }),
-    [signals]
-  );
+  const counts = snapshot?.meta?.counts || {
+    holders: 0,
+    whales: 0,
+    volume: 0,
+    smart: 0,
+    multi: 0,
+  };
 
-  const timeSortedSignals = useMemo(() => {
-    return [...normalizedSignals].sort((a, b) => {
-      const ta = a.observed_at ? new Date(a.observed_at).getTime() : 0;
-      const tb = b.observed_at ? new Date(b.observed_at).getTime() : 0;
-      return tb - ta;
-    });
-  }, [normalizedSignals]);
+  const lastUpdated = snapshot?.meta?.timestamp;
 
-  const orderedSignals = useMemo(() => {
-    return [...timeSortedSignals].sort((a, b) => {
-      const pa = TAB_PRIORITY[(a.category as TabKey) || "rpc"];
-      const pb = TAB_PRIORITY[(b.category as TabKey) || "rpc"];
-      if (pa !== pb) return pa - pb;
-      const ta = a.observed_at ? new Date(a.observed_at).getTime() : 0;
-      const tb = b.observed_at ? new Date(b.observed_at).getTime() : 0;
-      return tb - ta;
-    });
-  }, [timeSortedSignals]);
-
-  const filteredSignals =
-    activeTab === "all"
-      ? orderedSignals
-      : orderedSignals.filter((s) => s.category === activeTab);
-
-  const whales = normalizedSignals.filter((s) => s.category === "whale");
-  const volumes = normalizedSignals.filter((s) => s.category === "volume");
-  const dex = normalizedSignals.filter((s) => s.category === "dex");
-  const rpc = normalizedSignals.filter((s) => s.category === "rpc");
-
-  const lastUpdatedRaw = data?.timestamp ?? signals[0]?.observed_at ?? null;
-  const lastUpdatedString =
-    lastUpdatedRaw == null
-      ? "–"
-      : typeof lastUpdatedRaw === "number"
-      ? new Date(lastUpdatedRaw).toISOString()
-      : String(lastUpdatedRaw);
+  const currentSignals: Signal[] = useMemo(() => {
+    return groups[activeGroup] || [];
+  }, [groups, activeGroup]);
 
   const shortAddr = (addr?: string) =>
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : undefined;
@@ -195,7 +201,7 @@ export default function HomePage() {
         overflow: "hidden",
       }}
     >
-      {/* glassy blue wash */}
+      {/* glassy blue aura */}
       <div
         style={{
           position: "absolute",
@@ -210,7 +216,7 @@ export default function HomePage() {
 
       <div style={{ position: "relative", zIndex: 1 }}>
         {/* HEADER */}
-        <header style={{ marginBottom: 16 }}>
+        <header style={{ marginBottom: 14 }}>
           <div
             style={{
               display: "flex",
@@ -280,7 +286,7 @@ export default function HomePage() {
                     color: "#0f172a",
                   }}
                 >
-                  BASEFLOW
+                  BaseFlow
                   <span
                     style={{
                       fontSize: 10,
@@ -294,7 +300,7 @@ export default function HomePage() {
                       color: "#1d4ed8",
                     }}
                   >
-                    Signal Agent
+                    Snapshot
                   </span>
                 </div>
 
@@ -330,7 +336,7 @@ export default function HomePage() {
                     marginTop: 2,
                   }}
                 >
-                  Live on Base · Watching whales, holders & volume
+                  Live Dune snapshot · Top 5 per segment
                 </span>
               </div>
             </div>
@@ -369,7 +375,7 @@ export default function HomePage() {
                     : "none",
                 }}
               />
-              <span>{autoRefresh ? "Live feed" : "Paused"}</span>
+              <span>{autoRefresh ? "Live 60s" : "Manual"}</span>
             </button>
           </div>
 
@@ -384,54 +390,16 @@ export default function HomePage() {
             }}
           >
             <span>
-              Network: <strong>Base</strong> · Signals:{" "}
-              <strong>{meta.filtered_count ?? signals.length}</strong>
+              Network: <strong>Base</strong> · Segments:{" "}
+              <strong>5</strong>
             </span>
             <span style={{ color: "#64748b" }}>
-              Updated: {lastUpdatedString}
+              Snapshot: {lastUpdated || "–"}
             </span>
           </div>
         </header>
 
-        {/* SUMMARY */}
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 8,
-            marginBottom: 12,
-            fontSize: 11,
-          }}
-        >
-          <MiniStat
-            label="Whales"
-            value={whales.length}
-            icon="🐋"
-            caption="Large wallet moves"
-          />
-          <MiniStat
-            label="Holders"
-            value={normalizedSignals.filter(
-              (s) => s.type === "holder_spike"
-            ).length}
-            icon="👥"
-            caption="Holder spikes"
-          />
-          <MiniStat
-            label="Volume"
-            value={volumes.length}
-            icon="📈"
-            caption="Volume spikes"
-          />
-          <MiniStat
-            label="Total"
-            value={meta.filtered_count ?? signals.length}
-            icon="📡"
-            caption="All active signals"
-          />
-        </section>
-
-        {/* TABS */}
+        {/* TABS FOR SEGMENTS */}
         <section
           style={{
             marginBottom: 12,
@@ -450,19 +418,12 @@ export default function HomePage() {
               gap: 4,
             }}
           >
-            {[
-              { k: "all", label: "All" },
-              { k: "whale", label: "Whales" },
-              { k: "volume", label: "Volume" },
-              { k: "dex", label: "DEX" },
-              { k: "rpc", label: "RPC" },
-            ].map((t) => {
-              const key = t.k as TabKey;
-              const isActive = activeTab === key;
+            {GROUP_CONFIG.map((g) => {
+              const isActive = activeGroup === g.key;
               return (
                 <button
-                  key={t.k}
-                  onClick={() => setActiveTab(key)}
+                  key={g.key}
+                  onClick={() => setActiveGroup(g.key)}
                   style={{
                     width: "100%",
                     padding: "6px 4px",
@@ -471,7 +432,7 @@ export default function HomePage() {
                     background: isActive
                       ? "linear-gradient(135deg,#60a5fa,#2563eb)"
                       : "transparent",
-                    fontSize: 11,
+                    fontSize: 10,
                     color: isActive ? "#ffffff" : "#1e293b",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
@@ -483,11 +444,39 @@ export default function HomePage() {
                       "background 0.16s ease, color 0.16s ease, transform 0.1s ease, box-shadow 0.16s ease",
                   }}
                 >
-                  {t.label}
+                  {g.icon} {g.label}
                 </button>
               );
             })}
           </div>
+        </section>
+
+        {/* segment description + count */}
+        <section style={{ marginBottom: 10, fontSize: 11 }}>
+          {GROUP_CONFIG.map(
+            (g) =>
+              g.key === activeGroup && (
+                <div
+                  key={g.key}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ color: "#475569" }}>{g.desc}</div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: "#1d4ed8",
+                    }}
+                  >
+                    Raw: {counts[g.key] || 0} · Shown:{" "}
+                    {currentSignals.length}
+                  </div>
+                </div>
+              )
+          )}
         </section>
 
         {/* LIST */}
@@ -504,17 +493,17 @@ export default function HomePage() {
           >
             <span
               style={{
-                width: 10,
-                height: 10,
+                width: 12,
+                height: 12,
                 borderRadius: "999px",
                 border: "2px solid rgba(148,163,184,0.5)",
                 borderTopColor: "#60a5fa",
                 animation: "spin 0.8s linear infinite",
               }}
             />
-            Fetching fresh signals…
+            Loading snapshot…
           </div>
-        ) : filteredSignals.length === 0 ? (
+        ) : currentSignals.length === 0 ? (
           <div
             style={{
               fontSize: 12,
@@ -522,7 +511,7 @@ export default function HomePage() {
               color: "#64748b",
             }}
           >
-            No signals in this window.
+            No recent signals in this segment.
           </div>
         ) : (
           <div
@@ -533,295 +522,267 @@ export default function HomePage() {
               marginBottom: 16,
             }}
           >
-            {filteredSignals.map((s, idx) => {
-              const isWhale = s.category === "whale";
-              const isVolume = s.category === "volume";
-              const isDeploy =
-                s.type === "deploy" ||
-                s.type?.toLowerCase().includes("deploy");
-              const isHolder = s.type === "holder_spike";
-              const isSmart = s.type === "smart_money_buy";
-              const isMulti = s.type === "multi_whale";
+            {currentSignals.map((s, idx) => {
+              const tx = s.tx_hash || s.tx;
+              const amountEth =
+                s.amount_eth || s.meta?.eth_amount || s.amount || 0;
+              const holders =
+                s.holders_1h || s.meta?.holders_1h || 0;
+              const growth =
+                s.growth_percent || s.growth || s.meta?.growth_percent;
+              const vol =
+                s.volume ||
+                s.meta?.cluster_volume ||
+                s.usd_value ||
+                s.meta?.usd_value;
 
-              const title =
-                s.type === "whale_tx"
-                  ? "Whale Transaction"
-                  : s.type === "volume_spike"
-                  ? "Volume Spike"
-                  : s.type === "holder_spike"
-                  ? "Holder Spike"
-                  : s.type === "smart_money_buy"
-                  ? "Smart Money Buy"
-                  : s.type === "multi_whale"
-                  ? "Multi Whale Cluster"
-                  : TYPE_LABELS[s.type] || s.type;
+              const score = s.score ?? 0;
 
-              const borderColor = isWhale
-                ? "rgba(37,99,235,0.9)"
-                : isHolder
-                ? "rgba(34,197,94,0.8)"
-                : isVolume
-                ? "rgba(234,179,8,0.9)"
-                : isSmart
-                ? "rgba(59,130,246,0.9)"
-                : isMulti
-                ? "rgba(56,189,248,0.9)"
-                : "rgba(148,163,184,0.9)";
+              let title = s.type;
+              if (activeGroup === "whales") title = "Whale Transaction";
+              else if (activeGroup === "holders") title = "Holder Spike";
+              else if (activeGroup === "volume") title = "Volume Spike";
+              else if (activeGroup === "smart") title = "Smart Money Buy";
+              else if (activeGroup === "multi")
+                title = "Multi‑Whale Cluster";
 
-              const bg = "rgba(255,255,255,0.92)";
-
-              let mainText: string | undefined = s.description;
-              if (!mainText) {
-                if (s.type === "whale_tx") {
-                  const eth =
-                    Number(s.amount || s.meta?.eth_amount || 0).toFixed(
-                      2
-                    );
-                  mainText = `${eth} ETH whale move on Base`;
-                } else if (s.type === "volume_spike") {
-                  const vol = s.volume ?? s.amount ?? 0;
-                  mainText = `Volume spike: $${Math.round(
-                    vol
-                  ).toLocaleString()} traded`;
-                } else if (isHolder) {
-                  mainText = `Holder spike on ${shortAddr(s.token)}`;
-                } else if (isSmart) {
-                  mainText = `Smart money buying ${shortAddr(s.token)}`;
-                } else if (isMulti) {
-                  mainText = `Clustered whale activity on ${shortAddr(
-                    s.token
-                  )}`;
-                } else if (isDeploy) {
-                  mainText = `New token deployed: ${shortAddr(s.contract)}`;
-                }
+              let subtitle = "";
+              if (activeGroup === "whales") {
+                subtitle = `${amountEth.toFixed(2)} ETH move`;
+              } else if (activeGroup === "holders") {
+                subtitle = `${holders} holders in last hour`;
+              } else if (activeGroup === "volume" && vol) {
+                subtitle = `$${Math.round(vol).toLocaleString()} traded`;
+              } else if (activeGroup === "smart" && vol) {
+                subtitle = `$${Math.round(vol).toLocaleString()} buy`;
+              } else if (activeGroup === "multi" && vol) {
+                subtitle = `$${Math.round(vol).toLocaleString()} cluster`;
               }
 
+              const primaryToken =
+                s.symbol || s.token || s.contract || undefined;
+
               return (
-                <article
-                  key={s.id || s.tx || idx}
+                <button
+                  key={tx || s.token || idx}
+                  onClick={() =>
+                    setActiveSignal({ group: activeGroup, signal: s })
+                  }
                   style={{
-                    borderRadius: 18,
-                    padding: 12,
-                    background: bg,
-                    border: `1px solid ${borderColor}`,
-                    boxShadow:
-                      "0 14px 28px rgba(148,163,184,0.45)",
-                    backdropFilter: "blur(10px)",
-                    transform: "translateY(0) scale(1)",
-                    transition:
-                      "transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = "translateY(-3px) scale(1.01)";
-                    el.style.boxShadow =
-                      "0 18px 38px rgba(129,140,248,0.4)";
-                  }}
-                  onMouseLeave={(e) => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = "translateY(0) scale(1)";
-                    el.style.boxShadow =
-                      "0 14px 28px rgba(148,163,184,0.45)";
+                    width: "100%",
+                    textAlign: "left",
+                    border: "none",
+                    background: "transparent",
+                    padding: 0,
+                    cursor: "pointer",
                   }}
                 >
-                  <div
+                  <article
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 6,
+                      borderRadius: 18,
+                      padding: 12,
+                      background: "rgba(255,255,255,0.96)",
+                      border: "1px solid rgba(191,219,254,1)",
+                      boxShadow:
+                        "0 14px 28px rgba(148,163,184,0.45)",
+                      backdropFilter: "blur(10px)",
+                      transform: "translateY(0) scale(1)",
+                      transition:
+                        "transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      const el = e.currentTarget as HTMLDivElement;
+                      el.style.transform =
+                        "translateY(-3px) scale(1.01)";
+                      el.style.boxShadow =
+                        "0 18px 38px rgba(129,140,248,0.4)";
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget as HTMLDivElement;
+                      el.style.transform = "translateY(0) scale(1)";
+                      el.style.boxShadow =
+                        "0 14px 28px rgba(148,163,184,0.45)";
                     }}
                   >
                     <div
                       style={{
                         display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        gap: 8,
-                        fontSize: 12,
-                        color: "#0f172a",
+                        marginBottom: 6,
                       }}
                     >
-                      <span
+                      <div
                         style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 999,
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          background:
-                            "radial-gradient(circle at 40% 0%, #e0f2fe, #bfdbfe)",
-                          border: `1px solid ${borderColor}`,
+                          gap: 8,
+                          fontSize: 12,
+                          color: "#0f172a",
                         }}
                       >
-                        {isWhale && "🐋"}
-                        {isDeploy && "🧬"}
-                        {isVolume && "📈"}
-                        {isHolder && "👥"}
-                        {isSmart && "🧠"}
-                        {isMulti && "🐳"}
-                        {!isWhale &&
-                          !isDeploy &&
-                          !isVolume &&
-                          !isHolder &&
-                          !isSmart &&
-                          !isMulti &&
-                          "🔍"}
-                      </span>
-                      <span>{title}</span>
-                    </div>
-                    {s.score != null && (
-                      <span
+                        <span
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 999,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background:
+                              "radial-gradient(circle at 40% 0%, #e0f2fe, #bfdbfe)",
+                            border: "1px solid rgba(191,219,254,1)",
+                          }}
+                        >
+                          {activeGroup === "whales" && "🐋"}
+                          {activeGroup === "holders" && "👥"}
+                          {activeGroup === "volume" && "📈"}
+                          {activeGroup === "smart" && "🧠"}
+                          {activeGroup === "multi" && "🐳"}
+                        </span>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 1,
+                          }}
+                        >
+                          <span>{title}</span>
+                          {subtitle && (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                color: "#6b7280",
+                              }}
+                            >
+                              {subtitle}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* animated fire score pill */}
+                      <div
                         style={{
-                          fontSize: 11,
-                          padding: "2px 7px",
+                          position: "relative",
+                          padding: "4px 10px",
                           borderRadius: 999,
-                          border: "1px solid rgba(148,163,184,0.9)",
-                          background: "#eff6ff",
-                          color: "#1d4ed8",
+                          background:
+                            "linear-gradient(135deg, #fee2e2, #fed7aa)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          boxShadow:
+                            "0 0 10px rgba(248,113,113,0.4)",
+                          overflow: "hidden",
                         }}
                       >
-                        Score {s.score}
-                      </span>
-                    )}
-                  </div>
-
-                  {mainText && (
-                    <div
-                      style={{
-                        fontSize: 13,
-                        marginBottom: 6,
-                        color: "#111827",
-                      }}
-                    >
-                      {mainText}
-                    </div>
-                  )}
-
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "#374151",
-                    }}
-                  >
-                    {isHolder && (
-                      <>
-                        {s.holders_1h != null && (
-                          <div>Holders (1h): {s.holders_1h}</div>
-                        )}
-                        {(s.growth_percent ?? s.growth) != null && (
-                          <div>
-                            Growth:{" "}
-                            {Number(
-                              s.growth_percent ?? s.growth ?? 0
-                            ).toFixed(2)}
-                            %
-                          </div>
-                        )}
-                        {s.token && (
-                          <div>
-                            Token:{" "}
-                            <span style={{ fontFamily: "monospace" }}>
-                              {shortAddr(s.token)}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {s.type === "whale_tx" && (
-                      <>
-                        {s.amount != null && (
-                          <div>
-                            Amount:{" "}
-                            {Number(s.amount).toFixed(2)} ETH
-                          </div>
-                        )}
-                        {s.wallet && (
-                          <div>
-                            From:{" "}
-                            <span style={{ fontFamily: "monospace" }}>
-                              {shortAddr(s.wallet)}
-                            </span>
-                          </div>
-                        )}
-                        {s.to && (
-                          <div>
-                            To:{" "}
-                            <span style={{ fontFamily: "monospace" }}>
-                              {shortAddr(s.to as string)}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {s.type === "volume_spike" && s.volume != null && (
-                      <div>
-                        Volume: $
-                        {Math.round(s.volume).toLocaleString()}
-                      </div>
-                    )}
-
-                    {isSmart && s.amount != null && (
-                      <div>
-                        Size: $
-                        {Math.round(s.amount).toLocaleString()}
-                      </div>
-                    )}
-
-                    {isMulti && (
-                      <>
-                        {s.whales != null && (
-                          <div>Whales: {s.whales}</div>
-                        )}
-                        {s.volume != null && (
-                          <div>
-                            Cluster volume: $
-                            {Math.round(s.volume).toLocaleString()}
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {s.contract && (
-                      <div>
-                        Contract:{" "}
-                        <span style={{ fontFamily: "monospace" }}>
-                          {shortAddr(s.contract)}
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            background:
+                              "radial-gradient(circle at 0 0, rgba(251,113,133,0.55), transparent 55%)",
+                            animation:
+                              "pulseFire 1.6s ease-in-out infinite",
+                            pointerEvents: "none",
+                          }}
+                        />
+                        <span
+                          style={{
+                            position: "relative",
+                            fontSize: 12,
+                          }}
+                        >
+                          🔥
+                        </span>
+                        <span
+                          style={{
+                            position: "relative",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: "#7f1d1d",
+                          }}
+                        >
+                          {score.toFixed(1)}
                         </span>
                       </div>
-                    )}
+                    </div>
 
-                    {s.tx && (
-                      <div style={{ marginTop: 4 }}>
-                        <a
-                          href={`https://basescan.org/tx/${s.tx}`}
-                          target="_blank"
+                    {/* compact info row */}
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#374151",
+                      }}
+                    >
+                      {primaryToken && (
+                        <div>
+                          Token:{" "}
+                          <span
+                            style={{ fontFamily: "monospace" }}
+                          >
+                            {shortAddr(primaryToken)}
+                          </span>
+                        </div>
+                      )}
+                      {activeGroup === "whales" && (
+                        <>
+                          {s.wallet_from && (
+                            <div>
+                              From:{" "}
+                              <span
+                                style={{
+                                  fontFamily: "monospace",
+                                }}
+                              >
+                                {shortAddr(s.wallet_from)}
+                              </span>
+                            </div>
+                          )}
+                          {s.wallet_to && (
+                            <div>
+                              To:{" "}
+                              <span
+                                style={{
+                                  fontFamily: "monospace",
+                                }}
+                              >
+                                {shortAddr(s.wallet_to)}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {activeGroup === "holders" && growth != null && (
+                        <div>Growth: {growth.toFixed(2)}%</div>
+                      )}
+                      {tx && (
+                        <div
                           style={{
+                            marginTop: 4,
                             color: "#2563eb",
-                            textDecoration: "none",
                             fontSize: 11,
                           }}
                         >
-                          View on BaseScan ↗
-                        </a>
+                          Tap to expand • tx {shortAddr(tx)}
+                        </div>
+                      )}
+                    </div>
+
+                    {s.observed_at && (
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "#9ca3af",
+                          marginTop: 6,
+                        }}
+                      >
+                        {formatTime(s.observed_at)}
                       </div>
                     )}
-                  </div>
-
-                  {s.observed_at && (
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "#9ca3af",
-                        marginTop: 6,
-                      }}
-                    >
-                      {formatTime(s.observed_at)}
-                    </div>
-                  )}
-                </article>
+                  </article>
+                </button>
               );
             })}
           </div>
@@ -848,52 +809,96 @@ export default function HomePage() {
               marginBottom: 6,
             }}
           >
-            <span>Feed status</span>
+            <span>Snapshot status</span>
             <span
               style={{
                 fontSize: 10,
-                color: meta.filtered_count ? "#16a34a" : "#f97316",
+                color:
+                  (snapshot?.meta?.counts?.holders || 0) +
+                    (snapshot?.meta?.counts?.whales || 0) >
+                  0
+                    ? "#16a34a"
+                    : "#f97316",
               }}
             >
-              {meta.filtered_count ? "Active" : "Idle"}
+              {(snapshot?.meta?.counts?.holders || 0) +
+              (snapshot?.meta?.counts?.whales || 0)
+                ? "Active"
+                : "Idle"}
             </span>
           </div>
 
           <div
-            style={{ display: "flex", flexWrap: "wrap", gap: 4 }}
-          >
-            {meta.sources &&
-              Object.entries(meta.sources).map(([k, v]) => (
-                <span
-                  key={k}
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: 999,
-                    border: "1px solid rgba(191,219,254,1)",
-                    background: v
-                      ? "rgba(219,234,254,0.9)"
-                      : "rgba(248,250,252,0.9)",
-                    color: v ? "#1d4ed8" : "#6b7280",
-                    fontSize: 10,
-                  }}
-                >
-                  {k.toUpperCase()}
-                </span>
-              ))}
-          </div>
-
-          <div
             style={{
-              fontSize: 10,
-              color: "#9ca3af",
-              marginTop: 6,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 4,
             }}
           >
-            Raw: {meta.total_raw ?? 0} · Shown:{" "}
-            {meta.filtered_count ?? 0}
+            {GROUP_CONFIG.map((g) => (
+              <span
+                key={g.key}
+                style={{
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(191,219,254,1)",
+                  background:
+                    (counts[g.key] || 0) > 0
+                      ? "rgba(219,234,254,0.9)"
+                      : "rgba(248,250,252,0.9)",
+                  color:
+                    (counts[g.key] || 0) > 0
+                      ? "#1d4ed8"
+                      : "#6b7280",
+                  fontSize: 10,
+                }}
+              >
+                {g.label.toUpperCase()} • {counts[g.key] || 0}
+              </span>
+            ))}
           </div>
         </section>
       </div>
+
+      {/* Overlay detail card */}
+      {activeSignal && (
+        <div
+          onClick={() => setActiveSignal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,23,42,0.25)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-end",
+            zIndex: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 430,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              background: "rgba(255,255,255,0.98)",
+              border: "1px solid rgba(191,219,254,1)",
+              boxShadow:
+                "0 -10px 30px rgba(15,23,42,0.3)",
+              padding: 16,
+              maxHeight: "70vh",
+              overflowY: "auto",
+              animation: "slideUp 0.18s ease-out",
+            }}
+          >
+            <DetailCard
+              group={activeSignal.group}
+              signal={activeSignal.signal}
+            />
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         @keyframes spin {
@@ -904,56 +909,192 @@ export default function HomePage() {
             transform: rotate(360deg);
           }
         }
+        @keyframes pulseFire {
+          0% {
+            opacity: 0.3;
+            transform: translateX(-10%);
+          }
+          50% {
+            opacity: 0.7;
+            transform: translateX(10%);
+          }
+          100% {
+            opacity: 0.3;
+            transform: translateX(-10%);
+          }
+        }
+        @keyframes slideUp {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
       `}</style>
     </div>
   );
 }
 
-function MiniStat({
-  label,
-  value,
-  icon,
-  caption,
+function DetailCard({
+  group,
+  signal: s,
 }: {
-  label: string;
-  value: number;
-  icon: string;
-  caption: string;
+  group: GroupKey;
+  signal: Signal;
 }) {
+  const shortAddr = (addr?: string) =>
+    addr ? `${addr.slice(0, 10)}...${addr.slice(-4)}` : undefined;
+  const tx = s.tx_hash || s.tx;
+  const token = s.token || s.contract || undefined;
+  const score = s.score ?? 0;
+
+  const titleMap: Record<GroupKey, string> = {
+    holders: "Holder Spike Detail",
+    whales: "Whale Transaction Detail",
+    volume: "DEX Volume Spike Detail",
+    smart: "Smart Money Buy Detail",
+    multi: "Multi‑Whale Cluster Detail",
+  };
+
+  const amountEth =
+    s.amount_eth || s.meta?.eth_amount || s.amount || 0;
+  const holders =
+    s.holders_1h || s.meta?.holders_1h || 0;
+  const growth =
+    s.growth_percent || s.growth || s.meta?.growth_percent;
+  const vol =
+    s.volume ||
+    s.meta?.cluster_volume ||
+    s.usd_value ||
+    s.meta?.usd_value;
+  const whales =
+    s.whales || s.meta?.whale_wallets || 0;
+
   return (
-    <div
-      style={{
-        padding: 8,
-        borderRadius: 12,
-        background: "rgba(255,255,255,0.96)",
-        border: "1px solid rgba(191,219,254,1)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 3,
-        boxShadow: "0 8px 20px rgba(148,163,184,0.35)",
-        backdropFilter: "blur(10px)",
-      }}
-    >
-      <span style={{ fontSize: 11, color: "#1f2937" }}>
-        {icon} {label}
-      </span>
-      <span
+    <div>
+      <div
         style={{
-          fontSize: 16,
-          fontWeight: 600,
-          color: "#1d4ed8",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 8,
         }}
       >
-        {value}
-      </span>
-      <span
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: "#0f172a",
+          }}
+        >
+          {titleMap[group]}
+        </div>
+        <div
+          style={{
+            padding: "4px 10px",
+            borderRadius: 999,
+            border: "1px solid rgba(191,219,254,1)",
+            background: "rgba(239,246,255,1)",
+            fontSize: 11,
+            color: "#1d4ed8",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          🔥 Score {score.toFixed(1)}
+        </div>
+      </div>
+
+      <div
         style={{
-          fontSize: 9,
-          color: "#6b7280",
+          fontSize: 11,
+          color: "#374151",
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
         }}
       >
-        {caption}
-      </span>
+        {group === "whales" && (
+          <>
+            <div>Amount: {amountEth.toFixed(2)} ETH</div>
+            {s.wallet_from && (
+              <div>From: {shortAddr(s.wallet_from)}</div>
+            )}
+            {s.wallet_to && (
+              <div>To: {shortAddr(s.wallet_to)}</div>
+            )}
+          </>
+        )}
+
+        {group === "holders" && (
+          <>
+            <div>Holders (1h): {holders}</div>
+            {growth != null && (
+              <div>Growth: {growth.toFixed(2)}%</div>
+            )}
+          </>
+        )}
+
+        {group === "volume" && vol && (
+          <div>
+            Volume: ${Math.round(vol).toLocaleString()}
+          </div>
+        )}
+
+        {group === "smart" && vol && (
+          <div>
+            Buy size: ${Math.round(vol).toLocaleString()}
+          </div>
+        )}
+
+        {group === "multi" && (
+          <>
+            <div>Whales: {whales}</div>
+            {vol && (
+              <div>
+                Cluster volume: $
+                {Math.round(vol).toLocaleString()}
+              </div>
+            )}
+          </>
+        )}
+
+        {token && (
+          <div>
+            Token: <span>{shortAddr(token)}</span>
+          </div>
+        )}
+
+        {tx && (
+          <div>
+            Tx: <span>{shortAddr(tx)}</span>
+          </div>
+        )}
+
+        {s.observed_at && (
+          <div>Observed: {formatTime(s.observed_at)}</div>
+        )}
+
+        {tx && (
+          <div style={{ marginTop: 6 }}>
+            <a
+              href={`https://basescan.org/tx/${tx}`}
+              target="_blank"
+              style={{
+                color: "#2563eb",
+                textDecoration: "none",
+                fontSize: 11,
+              }}
+            >
+              View on BaseScan ↗
+            </a>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ dotenv.config();
 
 const BOT = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT = process.env.TELEGRAM_CHAT_ID;
-const SIGNAL_URL = process.env.SIGNAL_AGENT_URL;
+const SIGNAL_AGENT_URL = process.env.SIGNAL_AGENT_URL;
 
 console.log("DEBUG ENVS:", {
   TELEGRAM_BOT_TOKEN: !!process.env.TELEGRAM_BOT_TOKEN,
@@ -13,7 +13,7 @@ console.log("DEBUG ENVS:", {
   SIGNAL_AGENT_URL: process.env.SIGNAL_AGENT_URL,
 });
 
-if (!BOT || !CHAT || !SIGNAL_URL) {
+if (!BOT || !CHAT || !SIGNAL_AGENT_URL) {
   console.error("Missing env variables");
   process.exit(1);
 }
@@ -47,6 +47,11 @@ function isNewSignal(s) {
 
 // ========== FORMATTERS ==========
 
+function short(addr = "", n = 4) {
+  if (!addr) return "";
+  return `${addr.slice(0, 2 + n)}…${addr.slice(-n)}`;
+}
+
 function formatSignal(s) {
   // WHALE TX
   if (s.type === "whale_tx") {
@@ -55,11 +60,12 @@ function formatSignal(s) {
     const from = s.wallet_from || s.wallet;
     const tx = s.tx_hash || s.tx;
 
-    return `🐋 WHALE MOVE
-
-💰 ${eth.toFixed(2)} ETH
-👛 ${(from || "").slice(0, 10)}...
-🔗 <a href="https://basescan.org/tx/${tx}">View on BaseScan</a>`;
+    return `🐋 <b>WHALE MOVE</b>\n` +
+      `💰 <b>${eth.toFixed(2)} ETH</b>\n` +
+      `👛 <code>${short(from, 6)}</code>\n` +
+      (tx
+        ? ` 🟦 <a href="https://basescan.org/tx/${tx}">BaseScan</a>`
+        : "");
   }
 
   // DUNE VOLUME SPIKE
@@ -69,10 +75,33 @@ function formatSignal(s) {
       Number(s.meta?.cluster_volume || 0) ||
       Number(s.usd_value || 0);
 
-    return `📈 VOLUME SPIKE
+    const tx = s.tx_hash || s.tx;
+    const token = s.token;
+    const symbol = s.symbol || "";
 
-💰 $${Math.round(vol).toLocaleString()}
-🪙 ${s.symbol || s.token || ""}`;
+    const tokenLabel =
+      symbol || (token ? short(token, 4) : "unknown");
+
+    const lines = [
+      `📈 <b>VOLUME SPIKE</b>`,
+      `💰 <b>$${Math.round(vol).toLocaleString()}</b>`,
+      `🪙 ${tokenLabel}`,
+    ];
+
+    if (tx || token) {
+      const parts = [];
+      if (tx)
+        parts.push(
+          `<a href="https://basescan.org/tx/${tx}">tx</a>`
+        );
+      if (token)
+        parts.push(
+          `<a href="https://basescan.org/token/${token}?chain=base">token</a>`
+        );
+      lines.push(` 🟦 ${parts.join(" · ")}`);
+    }
+
+    return lines.join("\n");
   }
 
   // SMART MONEY BUY
@@ -81,13 +110,17 @@ function formatSignal(s) {
       s.usd_value || s.amount || s.meta?.usd_value || 0
     );
     const tx = s.tx_hash || s.tx;
+    const symbol = s.symbol || "";
+    const wallet = s.wallet;
 
-    return `🧠 SMART MONEY BUY
-
-👛 ${(s.wallet || "").slice(0, 12)}...
-🪙 ${s.symbol || s.token || ""}
-💰 $${Math.round(amt).toLocaleString()}
-🔗 <a href="https://basescan.org/tx/${tx}">View on BaseScan</a>`;
+    return (
+      `🧠 <b>SMART BUY</b>\n` +
+      `💰 <b>$${Math.round(amt).toLocaleString()}</b> ${symbol}\n` +
+      (wallet ? `👛 <code>${short(wallet, 6)}</code>\n` : "") +
+      (tx
+        ? ` 🟦 <a href="https://basescan.org/tx/${tx}">BaseScan</a>`
+        : "")
+    );
   }
 
   // MULTI WHALE
@@ -96,12 +129,24 @@ function formatSignal(s) {
       Number(s.cluster_volume || 0) ||
       Number(s.meta?.cluster_volume || 0);
     const whales = Number(s.whales || s.meta?.whale_wallets || 0);
+    const symbol = s.symbol || "";
+    const token = s.token;
 
-    return `🐳 MULTI WHALE
+    const lines = [
+      `🐳 <b>MULTI WHALE</b>`,
+      `🐋 ${whales} wallets · 💰 $${Math.round(
+        vol
+      ).toLocaleString()}`,
+      `🪙 ${symbol || (token ? short(token, 4) : "unknown")}`,
+    ];
 
-🪙 ${s.symbol || s.token || ""}
-🐋 Whales: ${whales}
-💰 $${Math.round(vol).toLocaleString()}`;
+    if (token) {
+      lines.push(
+        ` 🟦 <a href="https://basescan.org/token/${token}?chain=base">token</a>`
+      );
+    }
+
+    return lines.join("\n");
   }
 
   // HOLDER SPIKE
@@ -110,24 +155,23 @@ function formatSignal(s) {
     const growth = Number(
       s.growth_percent || s.growth || s.meta?.growth_percent || 0
     ).toFixed(2);
-    const holders =
-      s.holders_1h || s.meta?.holders_1h || 0;
+    const holders = s.holders_1h || s.meta?.holders_1h || 0;
 
-    const short = token
-      ? `${token.slice(0, 6)}...${token.slice(-4)}`
-      : "unknown";
+    const shortTok = token ? short(token, 4) : "unknown";
 
-    return `📈 HOLDER SPIKE
-
-🪙 Token: <code>${short}</code>
-👥 Holders (1h): ${holders}
-📊 Growth: ${growth}%
-
-🔗 <a href="https://basescan.org/token/${token}">View on BaseScan</a>`;
+    return (
+      `📈 <b>HOLDER SPIKE</b>\n` +
+      `👥 <b>${holders}</b> in 1h · 📊 ${growth}%\n` +
+      `🪙 <code>${shortTok}</code>\n` +
+      (token
+        ? ` 🟦 <a href="https://basescan.org/token/${token}?chain=base">BaseScan</a>`
+        : "")
+    );
   }
 
-  return `⚡ ${s.type}`;
+  return ` 🟦 ${s.type}`;
 }
+
 
 // ========== TELEGRAM SENDER ==========
 
@@ -218,7 +262,7 @@ function splitMessages(text) {
 
 async function run() {
   try {
-    const url = `${SIGNAL_URL.replace(/\/$/, "")}/api/signals?nocache=${Date.now()}`;
+    const url = `${SIGNAL_AGENT_URL.replace(/\/$/, "")}/api/signals?nocache=${Date.now()}`;
     const res = await fetch(url);
 
     if (!res.ok) {
@@ -227,57 +271,38 @@ async function run() {
     }
 
     const data = await res.json();
-    const signals = data.signals || [];
 
-    // top 3 holder_spike + baaki sab
-    const holderSpikes = signals
-      .filter((s) => s.type === "holder_spike")
-      .sort(
-        (a, b) =>
-          (b.growth_percent || b.growth || 0) -
-          (a.growth_percent || a.growth || 0)
-      )
-      .slice(0, 3);
+    // snapshot groups -> flat array
+    const groups = data.groups || {};
+    const flatSignals = [
+      ...(groups.whales || []),
+      ...(groups.holders || []),
+      ...(groups.volume || []),
+      ...(groups.smart || []),
+      ...(groups.multi || []),
+    ];
 
-    const otherSignals = signals.filter(
-      (s) => s.type !== "holder_spike"
-    );
-
-    const finalSignals = [...holderSpikes, ...otherSignals];
+    console.log("snapshot signals length:", flatSignals.length);
 
     const batch = [];
 
-    for (const s of finalSignals) {
+    for (const s of flatSignals) {
       if (!isNewSignal(s)) continue;
-      if ((s.score || 0) < 4) continue; // low-score noise cut
+      // TEST: scoring off – sab bhej de
+      if ((s.score || 0) < 4) continue;
       batch.push(formatSignal(s));
     }
 
-    // high conviction combos (optional extra pings)
-    const alerts = detectHighConviction(signals);
-
-    for (const a of alerts) {
-      const msg = `🔥 HIGH CONVICTION SIGNAL
-
-Token: ${a.token}
-
-Signals:
-${a.signals.map((s) => "• " + s.type).join("\n")}
-
-⚡ BaseFlow`;
-      await sendTelegram(msg);
-    }
-
     if (batch.length === 0) {
-      console.log("No signals above threshold");
+      console.log("No snapshot signals for telegram");
       return;
     }
 
-    const finalMessage = `⚡ BASEFLOW SIGNALS – BASE
+    const finalMessage = `🟦 BaseFlow SIGNALS
 
 ${batch.join("\n\n────────────────────\n\n")}
 
-⚡ BaseFlow`;
+ 🟦 BaseFlow`;
 
     const parts = splitMessages(finalMessage);
 

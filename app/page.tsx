@@ -286,7 +286,7 @@ export default function HomePage() {
                     color: "#0f172a",
                   }}
                 >
-                  BaseFlow
+                  BaseFlow 🟦
                   <span
                     style={{
                       fontSize: 10,

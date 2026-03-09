@@ -5,7 +5,7 @@ import { sdk } from "@farcaster/miniapp-sdk";
 
 type GroupKey = "holders" | "whales" | "volume" | "smart" | "multi";
 
-type SnapshotGroups = {
+type signalGroups = {
   holders: Signal[];
   whales: Signal[];
   volume: Signal[];
@@ -13,11 +13,11 @@ type SnapshotGroups = {
   multi: Signal[];
 };
 
-type SnapshotResponse = {
+type signalResponse = {
   agent: string;
   network: string;
   timestamp: number;
-  groups: SnapshotGroups;
+  groups: signalGroups;
   meta: {
     counts: Record<GroupKey, number>;
     limit: number;
@@ -105,7 +105,7 @@ const GROUP_CONFIG: {
 ];
 
 export default function HomePage() {
-  const [snapshot, setSnapshot] = useState<SnapshotResponse | null>(
+  const [signal, setsignal] = useState<signalResponse | null>(
     null
   );
   const [loading, setLoading] = useState(true);
@@ -116,29 +116,29 @@ export default function HomePage() {
     signal: Signal;
   } | null>(null);
 
-  async function loadSnapshot() {
+  async function loadsignal() {
     try {
       setLoading(true);
-      const res = await fetch("/api/snapshot?limit=5", {
+      const res = await fetch("/api/signals?limit=5", {
         cache: "no-store",
       });
-      const json = (await res.json()) as SnapshotResponse;
-      setSnapshot(json);
+      const json = (await res.json()) as signalResponse;
+      setsignal(json);
     } catch (e) {
-      console.error("loadSnapshot error", e);
+      console.error("loadsignal error", e);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadSnapshot();
+    loadsignal();
   }, []);
 
   useEffect(() => {
     if (!autoRefresh) return;
     const id = setInterval(() => {
-      loadSnapshot();
+      loadsignal();
     }, 60000); // 60 sec
     return () => clearInterval(id);
   }, [autoRefresh]);
@@ -160,7 +160,7 @@ export default function HomePage() {
     };
   }, []);
 
-  const groups = snapshot?.groups || {
+  const groups = signal?.groups || {
     holders: [],
     whales: [],
     volume: [],
@@ -168,7 +168,7 @@ export default function HomePage() {
     multi: [],
   };
 
-  const counts = snapshot?.meta?.counts || {
+  const counts = signal?.meta?.counts || {
     holders: 0,
     whales: 0,
     volume: 0,
@@ -176,7 +176,7 @@ export default function HomePage() {
     multi: 0,
   };
 
-  const lastUpdated = snapshot?.meta?.timestamp;
+  const lastUpdated = signal?.meta?.timestamp;
 
   const currentSignals: Signal[] = useMemo(() => {
     return groups[activeGroup] || [];
@@ -300,7 +300,7 @@ export default function HomePage() {
                       color: "#1d4ed8",
                     }}
                   >
-                    Snapshot
+                    signal
                   </span>
                 </div>
 
@@ -336,7 +336,7 @@ export default function HomePage() {
                     marginTop: 2,
                   }}
                 >
-                  Live Dune snapshot · Top 5 per segment
+                  Live Dune signal · Top 5 per segment
                 </span>
               </div>
             </div>
@@ -394,7 +394,7 @@ export default function HomePage() {
               <strong>5</strong>
             </span>
             <span style={{ color: "#64748b" }}>
-              Snapshot: {lastUpdated || "–"}
+              signal: {lastUpdated || "–"}
             </span>
           </div>
         </header>
@@ -501,7 +501,7 @@ export default function HomePage() {
                 animation: "spin 0.8s linear infinite",
               }}
             />
-            Loading snapshot…
+            Loading signal…
           </div>
         ) : currentSignals.length === 0 ? (
           <div
@@ -809,20 +809,20 @@ export default function HomePage() {
               marginBottom: 6,
             }}
           >
-            <span>Snapshot status</span>
+            <span>signal status</span>
             <span
               style={{
                 fontSize: 10,
                 color:
-                  (snapshot?.meta?.counts?.holders || 0) +
-                    (snapshot?.meta?.counts?.whales || 0) >
+                  (signal?.meta?.counts?.holders || 0) +
+                    (signal?.meta?.counts?.whales || 0) >
                   0
                     ? "#16a34a"
                     : "#f97316",
               }}
             >
-              {(snapshot?.meta?.counts?.holders || 0) +
-              (snapshot?.meta?.counts?.whales || 0)
+              {(signal?.meta?.counts?.holders || 0) +
+              (signal?.meta?.counts?.whales || 0)
                 ? "Active"
                 : "Idle"}
             </span>
@@ -947,8 +947,12 @@ function DetailCard({
 }) {
   const shortAddr = (addr?: string) =>
     addr ? `${addr.slice(0, 10)}...${addr.slice(-4)}` : undefined;
+
   const tx = s.tx_hash || s.tx;
-  const token = s.token || s.contract || undefined;
+  const token = s.token || s.contract || null;
+  const walletFrom = s.wallet_from;
+  const walletTo = s.wallet_to;
+  const wallet = s.wallet;
   const score = s.score ?? 0;
 
   const titleMap: Record<GroupKey, string> = {
@@ -975,6 +979,7 @@ function DetailCard({
 
   return (
     <div>
+      {/* header same as before */}
       <div
         style={{
           display: "flex",
@@ -1009,6 +1014,7 @@ function DetailCard({
         </div>
       </div>
 
+      {/* metrics */}
       <div
         style={{
           fontSize: 11,
@@ -1016,17 +1022,16 @@ function DetailCard({
           display: "flex",
           flexDirection: "column",
           gap: 4,
+          marginBottom: 10,
         }}
       >
         {group === "whales" && (
           <>
             <div>Amount: {amountEth.toFixed(2)} ETH</div>
-            {s.wallet_from && (
-              <div>From: {shortAddr(s.wallet_from)}</div>
+            {walletFrom && (
+              <div>From: {shortAddr(walletFrom)}</div>
             )}
-            {s.wallet_to && (
-              <div>To: {shortAddr(s.wallet_to)}</div>
-            )}
+            {walletTo && <div>To: {shortAddr(walletTo)}</div>}
           </>
         )}
 
@@ -1078,21 +1083,167 @@ function DetailCard({
         {s.observed_at && (
           <div>Observed: {formatTime(s.observed_at)}</div>
         )}
+      </div>
 
+      {/* VERIFY ON BASESCAN SECTION */}
+      <div
+        style={{
+          borderTop: "1px solid rgba(226,232,240,1)",
+          paddingTop: 8,
+          marginTop: 4,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#0f172a",
+            marginBottom: 2,
+          }}
+        >
+          Verify on BaseScan
+        </div>
+
+        {/* tx link (for all where available) */}
         {tx && (
-          <div style={{ marginTop: 6 }}>
-            <a
-              href={`https://basescan.org/tx/${tx}`}
-              target="_blank"
+          <a
+            href={`https://basescan.org/tx/${tx}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              fontSize: 11,
+              color: "#2563eb",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>View transaction</span>
+            <span
               style={{
-                color: "#2563eb",
-                textDecoration: "none",
-                fontSize: 11,
+                fontFamily: "monospace",
+                color: "#6b7280",
               }}
             >
-              View on BaseScan ↗
-            </a>
-          </div>
+              {shortAddr(tx)}
+            </span>
+            <span>↗</span>
+          </a>
+        )}
+
+        {/* token link (holders, volume, smart, multi) */}
+        {token && (
+          <a
+            href={`https://basescan.org/token/${token}?chain=base`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              fontSize: 11,
+              color: "#2563eb",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>View token</span>
+            <span
+              style={{
+                fontFamily: "monospace",
+                color: "#6b7280",
+              }}
+            >
+              {shortAddr(token)}
+            </span>
+            <span>↗</span>
+          </a>
+        )}
+
+        {/* wallet links where available */}
+        {walletFrom && (
+          <a
+            href={`https://basescan.org/address/${walletFrom}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              fontSize: 11,
+              color: "#2563eb",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>From wallet</span>
+            <span
+              style={{
+                fontFamily: "monospace",
+                color: "#6b7280",
+              }}
+            >
+              {shortAddr(walletFrom)}
+            </span>
+            <span>↗</span>
+          </a>
+        )}
+
+        {walletTo && (
+          <a
+            href={`https://basescan.org/address/${walletTo}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              fontSize: 11,
+              color: "#2563eb",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>To wallet</span>
+            <span
+              style={{
+                fontFamily: "monospace",
+                color: "#6b7280",
+              }}
+            >
+              {shortAddr(walletTo)}
+            </span>
+            <span>↗</span>
+          </a>
+        )}
+
+        {/* taker wallet for volume / smart / multi */}
+        {wallet && !walletFrom && !walletTo && (
+          <a
+            href={`https://basescan.org/address/${wallet}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              fontSize: 11,
+              color: "#2563eb",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>Trader wallet</span>
+            <span
+              style={{
+                fontFamily: "monospace",
+                color: "#6b7280",
+              }}
+            >
+              {shortAddr(wallet)}
+            </span>
+            <span>↗</span>
+          </a>
         )}
       </div>
     </div>

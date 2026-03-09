@@ -6,25 +6,6 @@ const API_KEY = process.env.DUNE_API_KEY;
 const MAX_CACHE = 5000;
 const RETRIES = 3;
 
-const seenIds = new Map();
-
-// ============ DEDUPE (global) ============
-
-function isNewGlobal(id) {
-  if (!id) return true;
-
-  if (seenIds.has(id)) return false;
-
-  seenIds.set(id, Date.now());
-
-  if (seenIds.size > MAX_CACHE) {
-    const first = seenIds.keys().next().value;
-    seenIds.delete(first);
-  }
-
-  return true;
-}
-
 // ============ API HELPERS ============
 
 async function fetchWithRetry(url, retries = RETRIES) {
@@ -71,15 +52,16 @@ function toIso(ts) {
 
 // ============ SIGNAL MAPPERS ============
 
-// 1) Whale transactions (L1 ETH whales) – query 6783085
+// 1) Whale transactions (Base ETH whales) – query 6783085
 export async function getWhaleSignals() {
   const rows = await getLatestRows(6783085);
 
   const localSeen = new Set();
 
   return rows
-    .filter((r) => r.hash && !localSeen.has(r.hash) && localSeen.add(r.hash))
-    .filter((r) => isNewGlobal(r.hash))
+    .filter(
+      (r) => r.hash && !localSeen.has(r.hash) && localSeen.add(r.hash)
+    )
     .map((r) => {
       const ethAmount = Number(r.eth_amount || 0);
       const usd = Number(r.usd_value || 0);
@@ -114,8 +96,7 @@ export async function getVolumeSignals() {
       (r) =>
         r.tx_hash &&
         !localSeen.has(r.tx_hash) &&
-        localSeen.add(r.tx_hash) &&
-        isNewGlobal(r.tx_hash)
+        localSeen.add(r.tx_hash)
     )
     .map((r) => {
       const usd = Number(r.usd_value || 0);
@@ -146,7 +127,6 @@ export async function getSmartMoneySignals() {
 
   return rows
     .filter((r) => !["USDC", "USDT"].includes(r.token_bought_symbol))
-    .filter((r) => isNewGlobal(r.tx_hash))
     .map((r) => {
       const usd = Number(r.usd_value || 0);
 
@@ -171,27 +151,27 @@ export async function getSmartMoneySignals() {
 export async function getMultiWhaleSignals() {
   const rows = await getLatestRows(6792053);
 
-  return rows
-    .filter((r) => isNewGlobal(r.tx_hash))
-    .map((r) => {
-      const whales = Number(r.whale_wallets || 0);
-      const clusterVolume = Number(r.whale_volume || r.cluster_volume || 0);
+  return rows.map((r) => {
+    const whales = Number(r.whale_wallets || 0);
+    const clusterVolume = Number(
+      r.whale_volume || r.cluster_volume || 0
+    );
 
-      return {
-        type: "multi_whale",
-        token: r.token_bought_address || null,
-        symbol: r.token_bought_symbol || null,
-        tx_hash: r.tx_hash,
-        whales,
-        observed_at: toIso(r.block_time || r.timestamp),
-        source: "dune_multi_whale",
-        meta: {
-          whale_wallets: whales,
-          whale_trades: Number(r.whale_trades || 0),
-          cluster_volume: clusterVolume,
-        },
-      };
-    });
+    return {
+      type: "multi_whale",
+      token: r.token_bought_address || null,
+      symbol: r.token_bought_symbol || null,
+      tx_hash: r.tx_hash,
+      whales,
+      observed_at: toIso(r.block_time || r.timestamp),
+      source: "dune_multi_whale",
+      meta: {
+        whale_wallets: whales,
+        whale_trades: Number(r.whale_trades || 0),
+        cluster_volume: clusterVolume,
+      },
+    };
+  });
 }
 
 // 5) Holder spike – query 6792078
@@ -200,7 +180,6 @@ export async function getHolderSpikeSignals() {
 
   return rows
     .filter((r) => Number(r.holders_1h || 0) > 0)
-    .filter((r) => isNewGlobal(r.contract_address))
     .map((r) => {
       const h1 = Number(r.holders_1h || 0);
       const h24 = Number(r.holders_24h || 0);
@@ -214,7 +193,7 @@ export async function getHolderSpikeSignals() {
         holders_1h: h1,
         holders_24h: h24,
         growth_percent: growth,
-        observed_at: new Date().toISOString(), // fresh snapshot
+        observed_at: new Date().toISOString(), // fresh signal
         source: "dune_holder_spike",
         meta: {
           holders_1h: h1,

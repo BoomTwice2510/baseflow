@@ -21,9 +21,16 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   try {
-    // ============ CACHE ============
+    // ============ CACHE READ ============
     const cached = getCache("signals");
-    if (cached && !isExpired("signals")) {
+
+    // agar cache valid hai aur user ne debug=1 nahi bheja,
+    // to normal case me cache se serve kar sakte ho.
+    // (debug ke time hamesha fresh chahiye)
+    const { searchParams } = new URL(request.url);
+    const debugMode = searchParams.get("debug") === "1";
+
+    if (cached && !isExpired("signals") && !debugMode) {
       return Response.json(cached, {
         headers: {
           "Cache-Control": "s-maxage=15, stale-while-revalidate",
@@ -48,15 +55,12 @@ export async function GET(request) {
       process.env.HOLDER_SPIKE_THRESHOLD || "120"
     );
 
-    // ============ QUERY PARAMS ============
-    const { searchParams } = new URL(request.url);
     const types =
       searchParams.get("types")?.split(",").map((t) => t.trim()) || [];
     const limit = Math.min(
       parseInt(searchParams.get("limit") || MAX_FINAL),
       MAX_FINAL
     );
-    const debugMode = searchParams.get("debug") === "1";
 
     // ============ FETCH (ONLY DUNE) ============
     let whaleSignals = [];
@@ -82,7 +86,6 @@ export async function GET(request) {
     ] = await Promise.all(fetches);
 
     // ============ WHALE FILTER ============
-
     const whaleBlacklist = [
       "0x4200000000000000000000000000000000000010",
       "0x4200000000000000000000000000000000000006",
@@ -99,7 +102,7 @@ export async function GET(request) {
           new Date(a.observed_at || 0).getTime()
       )
       .filter((w) => {
-        const wallet = String(w.wallet_from || w.wallet).toLowerCase();
+        const wallet = String(w.wallet_from || w.wallet || "").toLowerCase();
         const to = String(w.wallet_to || "").toLowerCase();
         const tx = w.tx_hash || w.tx;
 
@@ -117,7 +120,6 @@ export async function GET(request) {
       .slice(0, MAX_WHALE);
 
     // ============ VOLUME FILTER ============
-
     const volumeFiltered = (volumeSignals || [])
       .filter((v) => {
         const vol =
@@ -129,7 +131,6 @@ export async function GET(request) {
       .slice(0, MAX_VOLUME);
 
     // ============ HOLDER FILTER ============
-
     const holderFiltered = (holderSpikeSignals || [])
       .filter(
         (h) =>
@@ -143,7 +144,6 @@ export async function GET(request) {
       .slice(0, MAX_HOLDER_SPIKE);
 
     // ============ MERGE RAW SIGNALS ============
-
     let signals = [
       ...whaleFiltered,
       ...(smartMoneySignals || []).slice(0, MAX_SMART),
@@ -153,7 +153,6 @@ export async function GET(request) {
     ];
 
     // ============ DEDUPE ============
-
     const seen = new Set();
     signals = signals.filter((s) => {
       const key =
@@ -169,7 +168,6 @@ export async function GET(request) {
     });
 
     // ============ SCORE + CORRELATION ============
-
     signals = signals.map((s) => ({
       ...s,
       score: scoreSignal(s || {}),
@@ -178,7 +176,6 @@ export async function GET(request) {
     signals = applySignalCorrelation(signals);
 
     // ============ SORT BY SCORE ============
-
     signals = signals
       .sort((a, b) => {
         const scoreDiff = (b.score || 0) - (a.score || 0);
@@ -191,7 +188,6 @@ export async function GET(request) {
       .slice(0, limit);
 
     // ============ ENSURE TYPE DIVERSITY ============
-
     const ensureType = (type, pool, count = 1) => {
       if (!pool || pool.length === 0) return;
       const already = signals.filter((s) => s.type === type);
@@ -227,7 +223,6 @@ export async function GET(request) {
       .slice(0, limit);
 
     // ============ AGE FILTER ============
-
     const nowTs = Date.now();
     const HOLDER_MAX = 2 * 60 * 60 * 1000;
     const WHALE_MAX = 1 * 60 * 60 * 1000;
@@ -242,13 +237,11 @@ export async function GET(request) {
     });
 
     // ============ TYPE FILTER (QUERY) ============
-
     if (types.length > 0) {
       signals = signals.filter((s) => types.includes(s.type));
     }
 
     // ============ META ============
-
     const meta = {
       sources: {
         whale: (whaleSignals || []).length > 0,
@@ -279,6 +272,16 @@ export async function GET(request) {
       });
     }
 
+    // ============ BLANK PROTECTION ============
+    if (signals.length === 0 && cached && !debugMode) {
+      // koi naya signal nahi, purana snapshot dikha do
+      return Response.json(cached, {
+        headers: {
+          "Cache-Control": "s-maxage=15, stale-while-revalidate",
+        },
+      });
+    }
+
     const response = {
       agent: "baseflow",
       network: "base",
@@ -287,7 +290,10 @@ export async function GET(request) {
       meta,
     };
 
-    setCache("signals", response);
+    // sirf non-empty snapshot cache karo
+    if (signals.length > 0) {
+      setCache("signals", response);
+    }
 
     return Response.json(response, {
       headers: {

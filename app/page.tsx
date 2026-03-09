@@ -105,9 +105,7 @@ const GROUP_CONFIG: {
 ];
 
 export default function HomePage() {
-  const [signal, setsignal] = useState<signalResponse | null>(
-    null
-  );
+  const [signal, setsignal] = useState<signalResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [activeGroup, setActiveGroup] = useState<GroupKey>("holders");
@@ -139,7 +137,7 @@ export default function HomePage() {
     if (!autoRefresh) return;
     const id = setInterval(() => {
       loadsignal();
-    }, 60000); // 60 sec
+    }, 60000);
     return () => clearInterval(id);
   }, [autoRefresh]);
 
@@ -188,752 +186,766 @@ export default function HomePage() {
   return (
     <div
       style={{
-        width: "100vw",
-        maxWidth: 430,
         minHeight: "100vh",
-        margin: "0 auto",
-        padding: 16,
-        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        width: "100%",
+        margin: 0,
+        padding: "24px 0",
         background:
-          "radial-gradient(circle at 0% 0%, #e0f2fe 0, #ffffff 45%, #e5f0ff 100%)",
-        color: "#0f172a",
-        position: "relative",
-        overflow: "hidden",
+          "radial-gradient(circle at 0 0, #020617 0, #020617 40%, #000 100%)",
+        color: "#e5e7eb",
+        display: "flex",
+        justifyContent: "center",
       }}
     >
-      {/* glassy blue aura */}
       <div
         style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          background:
-            "radial-gradient(circle at 0% 0%, rgba(59,130,246,0.25), transparent 55%), radial-gradient(circle at 100% 100%, rgba(37,99,235,0.15), transparent 55%)",
-          opacity: 0.9,
-          filter: "blur(40px)",
+          width: "100%",
+          maxWidth: 520,
+          padding: "0 16px",
+          position: "relative",
         }}
-      />
+      >
+        {/* dark blue aura */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background:
+              "radial-gradient(circle at 0% 0%, rgba(56,189,248,0.18), transparent 55%), radial-gradient(circle at 100% 100%, rgba(37,99,235,0.22), transparent 55%)",
+            opacity: 1,
+            filter: "blur(55px)",
+          }}
+        />
 
-      <div style={{ position: "relative", zIndex: 1 }}>
-        {/* HEADER */}
-        <header style={{ marginBottom: 14 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  position: "relative",
-                  width: 40,
-                  height: 40,
-                }}
-              >
+        <div style={{ position: "relative", zIndex: 1 }}>
+          {/* HEADER */}
+          <header style={{ marginBottom: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div
                   style={{
-                    position: "absolute",
-                    inset: -4,
-                    borderRadius: "999px",
-                    border: "1px solid rgba(37,99,235,0.4)",
-                    boxShadow: "0 0 18px rgba(59,130,246,0.7)",
-                  }}
-                />
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    borderRadius: "999px",
-                    overflow: "hidden",
-                    border: "1px solid rgba(148,163,184,.7)",
-                    background:
-                      "radial-gradient(circle at 30% 0%, #e0f2fe, #bfdbfe 70%)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    position: "relative",
+                    width: 44,
+                    height: 44,
                   }}
                 >
-                  <img
-                    src="/hero.png"
-                    alt="BaseFlow"
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: -5,
+                      borderRadius: "999px",
+                      border: "1px solid rgba(59,130,246,0.7)",
+                      boxShadow: "0 0 22px rgba(56,189,248,0.9)",
+                    }}
+                  />
+                  <div
                     style={{
                       width: "100%",
                       height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 800,
-                    letterSpacing: 0.6,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    color: "#0f172a",
-                  }}
-                >
-                  BaseFlow 🟦
-                  <span
-                    style={{
-                      fontSize: 10,
-                      padding: "2px 6px",
-                      borderRadius: 999,
-                      border: "1px solid rgba(59,130,246,.8)",
+                      borderRadius: "999px",
+                      overflow: "hidden",
+                      border: "1px solid rgba(30,64,175,0.8)",
                       background:
-                        "linear-gradient(135deg, rgba(239,246,255,0.95), rgba(191,219,254,0.9))",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.6,
-                      color: "#1d4ed8",
+                        "radial-gradient(circle at 30% 0%, #0f172a, #1e293b 70%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    signal
-                  </span>
+                    <img
+                      src="/hero.png"
+                      alt="BaseFlow"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 1,
-                    fontSize: 10,
-                    color: "#1f2933",
+                    gap: 2,
                   }}
                 >
-                  <span>
-                    Agent ID:{" "}
-                    <span style={{ fontFamily: "monospace" }}>2387</span>
-                  </span>
-                  <a
-                    href="https://www.8004scan.io/agents/base/2387"
-                    target="_blank"
+                  <div
                     style={{
-                      color: "#2563eb",
-                      textDecoration: "none",
+                      fontSize: 18,
+                      fontWeight: 800,
+                      letterSpacing: 0.6,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      color: "#f9fafb",
                     }}
                   >
-                    View on 8004scan ↗
-                  </a>
-                </div>
+                    BaseFlow 🟦
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "2px 6px",
+                        borderRadius: 999,
+                        border: "1px solid rgba(59,130,246,.9)",
+                        background:
+                          "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(37,99,235,0.9))",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.6,
+                        color: "#e5f2ff",
+                      }}
+                    >
+                      signal
+                    </span>
+                  </div>
 
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1,
+                      fontSize: 10,
+                      color: "#9ca3af",
+                    }}
+                  >
+                    <span>
+                      Agent ID:{" "}
+                      <span style={{ fontFamily: "monospace" }}>2387</span>
+                    </span>
+                    <a
+                      href="https://www.8004scan.io/agents/base/2387"
+                      target="_blank"
+                      style={{
+                        color: "#38bdf8",
+                        textDecoration: "none",
+                      }}
+                    >
+                      View on 8004scan ↗
+                    </a>
+                  </div>
+
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      marginTop: 2,
+                    }}
+                  >
+                    Live Dune signal · Top 5 per segment
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setAutoRefresh((v) => !v)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11,
+                  padding: "6px 13px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(56,189,248,0.9)",
+                  background: autoRefresh
+                    ? "linear-gradient(135deg, rgba(8,47,73,0.9), rgba(8,47,73,0.9))"
+                    : "rgba(15,23,42,0.9)",
+                  color: autoRefresh ? "#e0f2fe" : "#cbd5f5",
+                  cursor: "pointer",
+                  boxShadow: autoRefresh
+                    ? "0 0 20px rgba(56,189,248,0.9)"
+                    : "0 0 0 rgba(0,0,0,0)",
+                  transition:
+                    "background 0.16s ease, box-shadow 0.16s ease, transform 0.1s ease, border-color 0.16s ease",
+                  transform: autoRefresh ? "translateY(-1px)" : "none",
+                }}
+              >
                 <span
                   style={{
-                    fontSize: 11,
-                    color: "#475569",
-                    marginTop: 2,
+                    width: 8,
+                    height: 8,
+                    borderRadius: "999px",
+                    backgroundColor: autoRefresh ? "#22c55e" : "#64748b",
+                    boxShadow: autoRefresh
+                      ? "0 0 10px rgba(34,197,94,0.9)"
+                      : "none",
                   }}
-                >
-                  Live Dune signal · Top 5 per segment
-                </span>
-              </div>
+                />
+                <span>{autoRefresh ? "Live 60s" : "Manual"}</span>
+              </button>
             </div>
 
-            <button
-              onClick={() => setAutoRefresh((v) => !v)}
+            <div
               style={{
+                fontSize: 11,
+                marginTop: 8,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                color: "#9ca3af",
+              }}
+            >
+              <span>
+                Network: <strong>Base</strong> · Segments: <strong>5</strong>
+              </span>
+              <span style={{ color: "#6b7280" }}>
+                signal: {lastUpdated || "–"}
+              </span>
+            </div>
+          </header>
+
+          {/* TABS FOR SEGMENTS */}
+          <section
+            style={{
+              marginBottom: 12,
+              padding: 4,
+              borderRadius: 999,
+              background: "rgba(15,23,42,0.95)",
+              border: "1px solid rgba(30,64,175,0.9)",
+              boxShadow: "0 12px 36px rgba(0,0,0,0.9)",
+              backdropFilter: "blur(18px)",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5,1fr)",
+                gap: 4,
+              }}
+            >
+              {GROUP_CONFIG.map((g) => {
+                const isActive = activeGroup === g.key;
+                return (
+                  <button
+                    key={g.key}
+                    onClick={() => setActiveGroup(g.key)}
+                    style={{
+                      width: "100%",
+                      padding: "6px 4px",
+                      borderRadius: 999,
+                      border: "none",
+                      background: isActive
+                        ? "linear-gradient(135deg,#38bdf8,#2563eb)"
+                        : "transparent",
+                      fontSize: 10,
+                      color: isActive ? "#e5f2ff" : "#cbd5f5",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      transform: isActive ? "translateY(-1px)" : "none",
+                      boxShadow: isActive
+                        ? "0 8px 20px rgba(37,99,235,0.9)"
+                        : "none",
+                      transition:
+                        "background 0.16s ease, color 0.16s ease, transform 0.1s ease, box-shadow 0.16s ease",
+                    }}
+                  >
+                    {g.icon} {g.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* segment description + count */}
+          <section style={{ marginBottom: 10, fontSize: 11 }}>
+            {GROUP_CONFIG.map(
+              (g) =>
+                g.key === activeGroup && (
+                  <div
+                    key={g.key}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      color: "#9ca3af",
+                    }}
+                  >
+                    <div>{g.desc}</div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "#38bdf8",
+                      }}
+                    >
+                      Raw: {counts[g.key] || 0} · Shown:{" "}
+                      {currentSignals.length}
+                    </div>
+                  </div>
+                )
+            )}
+          </section>
+
+          {/* LIST */}
+          {loading ? (
+            <div
+              style={{
+                fontSize: 13,
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
-                fontSize: 11,
-                padding: "6px 13px",
-                borderRadius: 999,
-                border: "1px solid rgba(37,99,235,.7)",
-                background: autoRefresh
-                  ? "linear-gradient(135deg, rgba(219,234,254,.95), rgba(191,219,254,.95))"
-                  : "rgba(255,255,255,0.85)",
-                color: autoRefresh ? "#1d4ed8" : "#1f2937",
-                cursor: "pointer",
-                boxShadow: autoRefresh
-                  ? "0 0 18px rgba(59,130,246,0.6)"
-                  : "0 0 0 rgba(0,0,0,0)",
-                transition:
-                  "background 0.16s ease, box-shadow 0.16s ease, transform 0.1s ease, border-color 0.16s ease",
-                transform: autoRefresh ? "translateY(-1px)" : "none",
+                gap: 8,
+                marginBottom: 16,
+                color: "#e5e7eb",
               }}
             >
               <span
                 style={{
-                  width: 8,
-                  height: 8,
+                  width: 12,
+                  height: 12,
                   borderRadius: "999px",
-                  backgroundColor: autoRefresh ? "#22c55e" : "#9ca3af",
-                  boxShadow: autoRefresh
-                    ? "0 0 10px rgba(34,197,94,0.9)"
-                    : "none",
+                  border: "2px solid rgba(75,85,99,0.7)",
+                  borderTopColor: "#38bdf8",
+                  animation: "spin 0.8s linear infinite",
                 }}
               />
-              <span>{autoRefresh ? "Live 60s" : "Manual"}</span>
-            </button>
-          </div>
-
-          <div
-            style={{
-              fontSize: 11,
-              marginTop: 8,
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-              color: "#1f2937",
-            }}
-          >
-            <span>
-              Network: <strong>Base</strong> · Segments:{" "}
-              <strong>5</strong>
-            </span>
-            <span style={{ color: "#64748b" }}>
-              signal: {lastUpdated || "–"}
-            </span>
-          </div>
-        </header>
-
-        {/* TABS FOR SEGMENTS */}
-        <section
-          style={{
-            marginBottom: 12,
-            padding: 4,
-            borderRadius: 999,
-            background: "rgba(255,255,255,0.9)",
-            border: "1px solid rgba(191,219,254,1)",
-            boxShadow: "0 10px 24px rgba(148,163,184,0.35)",
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(5,1fr)",
-              gap: 4,
-            }}
-          >
-            {GROUP_CONFIG.map((g) => {
-              const isActive = activeGroup === g.key;
-              return (
-                <button
-                  key={g.key}
-                  onClick={() => setActiveGroup(g.key)}
-                  style={{
-                    width: "100%",
-                    padding: "6px 4px",
-                    borderRadius: 999,
-                    border: "none",
-                    background: isActive
-                      ? "linear-gradient(135deg,#60a5fa,#2563eb)"
-                      : "transparent",
-                    fontSize: 10,
-                    color: isActive ? "#ffffff" : "#1e293b",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    transform: isActive ? "translateY(-1px)" : "none",
-                    boxShadow: isActive
-                      ? "0 6px 14px rgba(37,99,235,0.5)"
-                      : "none",
-                    transition:
-                      "background 0.16s ease, color 0.16s ease, transform 0.1s ease, box-shadow 0.16s ease",
-                  }}
-                >
-                  {g.icon} {g.label}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* segment description + count */}
-        <section style={{ marginBottom: 10, fontSize: 11 }}>
-          {GROUP_CONFIG.map(
-            (g) =>
-              g.key === activeGroup && (
-                <div
-                  key={g.key}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div style={{ color: "#475569" }}>{g.desc}</div>
-                  <div
-                    style={{
-                      fontSize: 10,
-                      color: "#1d4ed8",
-                    }}
-                  >
-                    Raw: {counts[g.key] || 0} · Shown:{" "}
-                    {currentSignals.length}
-                  </div>
-                </div>
-              )
-          )}
-        </section>
-
-        {/* LIST */}
-        {loading ? (
-          <div
-            style={{
-              fontSize: 13,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 16,
-              color: "#1e293b",
-            }}
-          >
-            <span
+              Loading signal…
+            </div>
+          ) : currentSignals.length === 0 ? (
+            <div
               style={{
-                width: 12,
-                height: 12,
-                borderRadius: "999px",
-                border: "2px solid rgba(148,163,184,0.5)",
-                borderTopColor: "#60a5fa",
-                animation: "spin 0.8s linear infinite",
+                fontSize: 12,
+                marginBottom: 16,
+                color: "#6b7280",
               }}
-            />
-            Loading signal…
-          </div>
-        ) : currentSignals.length === 0 ? (
-          <div
-            style={{
-              fontSize: 12,
-              marginBottom: 16,
-              color: "#64748b",
-            }}
-          >
-            No recent signals in this segment.
-          </div>
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              marginBottom: 16,
-            }}
-          >
-            {currentSignals.map((s, idx) => {
-              const tx = s.tx_hash || s.tx;
-              const amountEth =
-                s.amount_eth || s.meta?.eth_amount || s.amount || 0;
-              const holders =
-                s.holders_1h || s.meta?.holders_1h || 0;
-              const growth =
-                s.growth_percent || s.growth || s.meta?.growth_percent;
-              const vol =
-                s.volume ||
-                s.meta?.cluster_volume ||
-                s.usd_value ||
-                s.meta?.usd_value;
+            >
+              No recent signals in this segment.
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                marginBottom: 16,
+              }}
+            >
+              {currentSignals.map((s, idx) => {
+                const tx = s.tx_hash || s.tx;
+                const amountEth =
+                  s.amount_eth || s.meta?.eth_amount || s.amount || 0;
+                const holders =
+                  s.holders_1h || s.meta?.holders_1h || 0;
+                const growth =
+                  s.growth_percent || s.growth || s.meta?.growth_percent;
+                const vol =
+                  s.volume ||
+                  s.meta?.cluster_volume ||
+                  s.usd_value ||
+                  s.meta?.usd_value;
 
-              const score = s.score ?? 0;
+                const score = s.score ?? 0;
 
-              let title = s.type;
-              if (activeGroup === "whales") title = "Whale Transaction";
-              else if (activeGroup === "holders") title = "Holder Spike";
-              else if (activeGroup === "volume") title = "Volume Spike";
-              else if (activeGroup === "smart") title = "Smart Money Buy";
-              else if (activeGroup === "multi")
-                title = "Multi‑Whale Cluster";
+                let title = s.type;
+                if (activeGroup === "whales") title = "Whale Transaction";
+                else if (activeGroup === "holders") title = "Holder Spike";
+                else if (activeGroup === "volume") title = "Volume Spike";
+                else if (activeGroup === "smart") title = "Smart Money Buy";
+                else if (activeGroup === "multi")
+                  title = "Multi‑Whale Cluster";
 
-              let subtitle = "";
-              if (activeGroup === "whales") {
-                subtitle = `${amountEth.toFixed(2)} ETH move`;
-              } else if (activeGroup === "holders") {
-                subtitle = `${holders} holders in last hour`;
-              } else if (activeGroup === "volume" && vol) {
-                subtitle = `$${Math.round(vol).toLocaleString()} traded`;
-              } else if (activeGroup === "smart" && vol) {
-                subtitle = `$${Math.round(vol).toLocaleString()} buy`;
-              } else if (activeGroup === "multi" && vol) {
-                subtitle = `$${Math.round(vol).toLocaleString()} cluster`;
-              }
+                let subtitle = "";
+                if (activeGroup === "whales") {
+                  subtitle = `${amountEth.toFixed(2)} ETH move`;
+                } else if (activeGroup === "holders") {
+                  subtitle = `${holders} holders in last hour`;
+                } else if (activeGroup === "volume" && vol) {
+                  subtitle = `$${Math.round(vol).toLocaleString()} traded`;
+                } else if (activeGroup === "smart" && vol) {
+                  subtitle = `$${Math.round(vol).toLocaleString()} buy`;
+                } else if (activeGroup === "multi" && vol) {
+                  subtitle = `$${Math.round(vol).toLocaleString()} cluster`;
+                }
 
-              const primaryToken =
-                s.symbol || s.token || s.contract || undefined;
+                const primaryToken =
+                  s.symbol || s.token || s.contract || undefined;
 
-              return (
-                <button
-                  key={tx || s.token || idx}
-                  onClick={() =>
-                    setActiveSignal({ group: activeGroup, signal: s })
-                  }
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    border: "none",
-                    background: "transparent",
-                    padding: 0,
-                    cursor: "pointer",
-                  }}
-                >
-                  <article
+                return (
+                  <button
+                    key={tx || s.token || idx}
+                    onClick={() =>
+                      setActiveSignal({ group: activeGroup, signal: s })
+                    }
                     style={{
-                      borderRadius: 18,
-                      padding: 12,
-                      background: "rgba(255,255,255,0.96)",
-                      border: "1px solid rgba(191,219,254,1)",
-                      boxShadow:
-                        "0 14px 28px rgba(148,163,184,0.45)",
-                      backdropFilter: "blur(10px)",
-                      transform: "translateY(0) scale(1)",
-                      transition:
-                        "transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget as HTMLDivElement;
-                      el.style.transform =
-                        "translateY(-3px) scale(1.01)";
-                      el.style.boxShadow =
-                        "0 18px 38px rgba(129,140,248,0.4)";
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget as HTMLDivElement;
-                      el.style.transform = "translateY(0) scale(1)";
-                      el.style.boxShadow =
-                        "0 14px 28px rgba(148,163,184,0.45)";
+                      width: "100%",
+                      textAlign: "left",
+                      border: "none",
+                      background: "transparent",
+                      padding: 0,
+                      cursor: "pointer",
                     }}
                   >
-                    <div
+                    <article
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: 6,
+                        borderRadius: 18,
+                        padding: 12,
+                        background: "rgba(15,23,42,0.96)",
+                        border: "1px solid rgba(56,189,248,0.35)",
+                        boxShadow:
+                          "0 18px 40px rgba(0,0,0,0.95)",
+                        backdropFilter: "blur(18px)",
+                        transform: "translateY(0) scale(1)",
+                        transition:
+                          "transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        const el = e.currentTarget as HTMLDivElement;
+                        el.style.transform =
+                          "translateY(-3px) scale(1.01)";
+                        el.style.boxShadow =
+                          "0 22px 52px rgba(15,23,42,1)";
+                        el.style.borderColor =
+                          "rgba(59,130,246,0.9)";
+                      }}
+                      onMouseLeave={(e) => {
+                        const el = e.currentTarget as HTMLDivElement;
+                        el.style.transform = "translateY(0) scale(1)";
+                        el.style.boxShadow =
+                          "0 18px 40px rgba(0,0,0,0.95)";
+                        el.style.borderColor =
+                          "rgba(56,189,248,0.35)";
                       }}
                     >
                       <div
                         style={{
                           display: "flex",
+                          justifyContent: "space-between",
                           alignItems: "center",
-                          gap: 8,
-                          fontSize: 12,
-                          color: "#0f172a",
+                          marginBottom: 6,
                         }}
                       >
-                        <span
+                        <div
                           style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: 999,
                             display: "flex",
                             alignItems: "center",
-                            justifyContent: "center",
-                            background:
-                              "radial-gradient(circle at 40% 0%, #e0f2fe, #bfdbfe)",
-                            border: "1px solid rgba(191,219,254,1)",
-                          }}
-                        >
-                          {activeGroup === "whales" && "🐋"}
-                          {activeGroup === "holders" && "👥"}
-                          {activeGroup === "volume" && "📈"}
-                          {activeGroup === "smart" && "🧠"}
-                          {activeGroup === "multi" && "🐳"}
-                        </span>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 1,
-                          }}
-                        >
-                          <span>{title}</span>
-                          {subtitle && (
-                            <span
-                              style={{
-                                fontSize: 11,
-                                color: "#6b7280",
-                              }}
-                            >
-                              {subtitle}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* animated fire score pill */}
-                      <div
-                        style={{
-                          position: "relative",
-                          padding: "4px 10px",
-                          borderRadius: 999,
-                          background:
-                            "linear-gradient(135deg, #fee2e2, #fed7aa)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          boxShadow:
-                            "0 0 10px rgba(248,113,113,0.4)",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            background:
-                              "radial-gradient(circle at 0 0, rgba(251,113,133,0.55), transparent 55%)",
-                            animation:
-                              "pulseFire 1.6s ease-in-out infinite",
-                            pointerEvents: "none",
-                          }}
-                        />
-                        <span
-                          style={{
-                            position: "relative",
+                            gap: 8,
                             fontSize: 12,
+                            color: "#e5e7eb",
                           }}
                         >
-                          🔥
-                        </span>
-                        <span
+                          <span
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 999,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background:
+                                "radial-gradient(circle at 40% 0%, #1e293b, #020617)",
+                              border:
+                                "1px solid rgba(56,189,248,0.6)",
+                            }}
+                          >
+                            {activeGroup === "whales" && "🐋"}
+                            {activeGroup === "holders" && "👥"}
+                            {activeGroup === "volume" && "📈"}
+                            {activeGroup === "smart" && "🧠"}
+                            {activeGroup === "multi" && "🐳"}
+                          </span>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 1,
+                            }}
+                          >
+                            <span>{title}</span>
+                            {subtitle && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  color: "#9ca3af",
+                                }}
+                              >
+                                {subtitle}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* animated fire score pill */}
+                        <div
                           style={{
                             position: "relative",
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: "#7f1d1d",
+                            padding: "4px 10px",
+                            borderRadius: 999,
+                            background:
+                              "linear-gradient(135deg, #7f1d1d, #b91c1c)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            boxShadow:
+                              "0 0 14px rgba(248,113,113,0.7)",
+                            overflow: "hidden",
                           }}
                         >
-                          {score.toFixed(1)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* compact info row */}
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#374151",
-                      }}
-                    >
-                      {primaryToken && (
-                        <div>
-                          Token:{" "}
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              background:
+                                "radial-gradient(circle at 0 0, rgba(248,113,113,0.7), transparent 55%)",
+                              animation:
+                                "pulseFire 1.6s ease-in-out infinite",
+                              pointerEvents: "none",
+                            }}
+                          />
                           <span
-                            style={{ fontFamily: "monospace" }}
+                            style={{
+                              position: "relative",
+                              fontSize: 12,
+                            }}
                           >
-                            {shortAddr(primaryToken)}
+                            🔥
+                          </span>
+                          <span
+                            style={{
+                              position: "relative",
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: "#fee2e2",
+                            }}
+                          >
+                            {score.toFixed(1)}
                           </span>
                         </div>
-                      )}
-                      {activeGroup === "whales" && (
-                        <>
-                          {s.wallet_from && (
-                            <div>
-                              From:{" "}
-                              <span
-                                style={{
-                                  fontFamily: "monospace",
-                                }}
-                              >
-                                {shortAddr(s.wallet_from)}
-                              </span>
-                            </div>
-                          )}
-                          {s.wallet_to && (
-                            <div>
-                              To:{" "}
-                              <span
-                                style={{
-                                  fontFamily: "monospace",
-                                }}
-                              >
-                                {shortAddr(s.wallet_to)}
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      )}
-                      {activeGroup === "holders" && growth != null && (
-                        <div>Growth: {growth.toFixed(2)}%</div>
-                      )}
-                      {tx && (
-                        <div
-                          style={{
-                            marginTop: 4,
-                            color: "#2563eb",
-                            fontSize: 11,
-                          }}
-                        >
-                          Tap to expand • tx {shortAddr(tx)}
-                        </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {s.observed_at && (
+                      {/* compact info row */}
                       <div
                         style={{
-                          fontSize: 10,
-                          color: "#9ca3af",
-                          marginTop: 6,
+                          fontSize: 11,
+                          color: "#cbd5f5",
                         }}
                       >
-                        {formatTime(s.observed_at)}
+                        {primaryToken && (
+                          <div>
+                            Token:{" "}
+                            <span
+                              style={{ fontFamily: "monospace" }}
+                            >
+                              {shortAddr(primaryToken)}
+                            </span>
+                          </div>
+                        )}
+                        {activeGroup === "whales" && (
+                          <>
+                            {s.wallet_from && (
+                              <div>
+                                From:{" "}
+                                <span
+                                  style={{
+                                    fontFamily: "monospace",
+                                  }}
+                                >
+                                  {shortAddr(s.wallet_from)}
+                                </span>
+                              </div>
+                            )}
+                            {s.wallet_to && (
+                              <div>
+                                To:{" "}
+                                <span
+                                  style={{
+                                    fontFamily: "monospace",
+                                  }}
+                                >
+                                  {shortAddr(s.wallet_to)}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {activeGroup === "holders" &&
+                          growth != null && (
+                            <div>
+                              Growth: {growth.toFixed(2)}%
+                            </div>
+                          )}
+                        {tx && (
+                          <div
+                            style={{
+                              marginTop: 4,
+                              color: "#38bdf8",
+                              fontSize: 11,
+                            }}
+                          >
+                            Tap to expand • tx {shortAddr(tx)}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </article>
-                </button>
-              );
-            })}
+
+                      {s.observed_at && (
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "#6b7280",
+                            marginTop: 6,
+                          }}
+                        >
+                          {formatTime(s.observed_at)}
+                        </div>
+                      )}
+                    </article>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* FEED STATUS */}
+          <section
+            style={{
+              fontSize: 11,
+              borderRadius: 16,
+              padding: 10,
+              marginBottom: 4,
+              background: "rgba(15,23,42,0.96)",
+              border: "1px solid rgba(30,64,175,0.9)",
+              boxShadow: "0 12px 36px rgba(0,0,0,0.9)",
+              backdropFilter: "blur(18px)",
+              color: "#e5e7eb",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 6,
+              }}
+            >
+              <span>signal status</span>
+              <span
+                style={{
+                  fontSize: 10,
+                  color:
+                    (signal?.meta?.counts?.holders || 0) +
+                      (signal?.meta?.counts?.whales || 0) >
+                    0
+                      ? "#22c55e"
+                      : "#f97316",
+                }}
+              >
+                {(signal?.meta?.counts?.holders || 0) +
+                (signal?.meta?.counts?.whales || 0)
+                  ? "Active"
+                  : "Idle"}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 4,
+              }}
+            >
+              {GROUP_CONFIG.map((g) => (
+                <span
+                  key={g.key}
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(30,64,175,0.9)",
+                    background:
+                      (counts[g.key] || 0) > 0
+                        ? "rgba(15,23,42,0.9)"
+                        : "rgba(15,23,42,0.7)",
+                    color:
+                      (counts[g.key] || 0) > 0
+                        ? "#38bdf8"
+                        : "#6b7280",
+                    fontSize: 10,
+                  }}
+                >
+                  {g.label.toUpperCase()} • {counts[g.key] || 0}
+                </span>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Overlay detail card */}
+        {activeSignal && (
+          <div
+            onClick={() => setActiveSignal(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,23,42,0.5)",
+              backdropFilter: "blur(8px)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "flex-end",
+              zIndex: 20,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: 520,
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                background: "rgba(15,23,42,0.98)",
+                border: "1px solid rgba(56,189,248,0.4)",
+                boxShadow: "0 -12px 40px rgba(0,0,0,0.9)",
+                padding: 16,
+                maxHeight: "70vh",
+                overflowY: "auto",
+                animation: "slideUp 0.18s ease-out",
+              }}
+            >
+              <DetailCard
+                group={activeSignal.group}
+                signal={activeSignal.signal}
+              />
+            </div>
           </div>
         )}
 
-        {/* FEED STATUS */}
-        <section
-          style={{
-            fontSize: 11,
-            borderRadius: 16,
-            padding: 10,
-            marginBottom: 4,
-            background: "rgba(255,255,255,0.95)",
-            border: "1px solid rgba(191,219,254,1)",
-            boxShadow: "0 10px 24px rgba(148,163,184,0.35)",
-            backdropFilter: "blur(10px)",
-            color: "#111827",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: 6,
-            }}
-          >
-            <span>signal status</span>
-            <span
-              style={{
-                fontSize: 10,
-                color:
-                  (signal?.meta?.counts?.holders || 0) +
-                    (signal?.meta?.counts?.whales || 0) >
-                  0
-                    ? "#16a34a"
-                    : "#f97316",
-              }}
-            >
-              {(signal?.meta?.counts?.holders || 0) +
-              (signal?.meta?.counts?.whales || 0)
-                ? "Active"
-                : "Idle"}
-            </span>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 4,
-            }}
-          >
-            {GROUP_CONFIG.map((g) => (
-              <span
-                key={g.key}
-                style={{
-                  padding: "3px 8px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(191,219,254,1)",
-                  background:
-                    (counts[g.key] || 0) > 0
-                      ? "rgba(219,234,254,0.9)"
-                      : "rgba(248,250,252,0.9)",
-                  color:
-                    (counts[g.key] || 0) > 0
-                      ? "#1d4ed8"
-                      : "#6b7280",
-                  fontSize: 10,
-                }}
-              >
-                {g.label.toUpperCase()} • {counts[g.key] || 0}
-              </span>
-            ))}
-          </div>
-        </section>
+        <style jsx global>{`
+          @keyframes spin {
+            from {
+              transform: rotate(0deg);
+            }
+            to {
+              transform: rotate(360deg);
+            }
+          }
+          @keyframes pulseFire {
+            0% {
+              opacity: 0.3;
+              transform: translateX(-10%);
+            }
+            50% {
+              opacity: 0.7;
+              transform: translateX(10%);
+            }
+            100% {
+              opacity: 0.3;
+              transform: translateX(-10%);
+            }
+          }
+          @keyframes slideUp {
+            from {
+              transform: translateY(20px);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+        `}</style>
       </div>
-
-      {/* Overlay detail card */}
-      {activeSignal && (
-        <div
-          onClick={() => setActiveSignal(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15,23,42,0.25)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "flex-end",
-            zIndex: 20,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 430,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              background: "rgba(255,255,255,0.98)",
-              border: "1px solid rgba(191,219,254,1)",
-              boxShadow:
-                "0 -10px 30px rgba(15,23,42,0.3)",
-              padding: 16,
-              maxHeight: "70vh",
-              overflowY: "auto",
-              animation: "slideUp 0.18s ease-out",
-            }}
-          >
-            <DetailCard
-              group={activeSignal.group}
-              signal={activeSignal.signal}
-            />
-          </div>
-        </div>
-      )}
-
-      <style jsx global>{`
-        @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-        @keyframes pulseFire {
-          0% {
-            opacity: 0.3;
-            transform: translateX(-10%);
-          }
-          50% {
-            opacity: 0.7;
-            transform: translateX(10%);
-          }
-          100% {
-            opacity: 0.3;
-            transform: translateX(-10%);
-          }
-        }
-        @keyframes slideUp {
-          from {
-            transform: translateY(20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -947,7 +959,6 @@ function DetailCard({
 }) {
   const shortAddr = (addr?: string) =>
     addr ? `${addr.slice(0, 10)}...${addr.slice(-4)}` : undefined;
-
   const tx = s.tx_hash || s.tx;
   const token = s.token || s.contract || null;
   const walletFrom = s.wallet_from;
@@ -979,7 +990,6 @@ function DetailCard({
 
   return (
     <div>
-      {/* header same as before */}
       <div
         style={{
           display: "flex",
@@ -992,7 +1002,7 @@ function DetailCard({
           style={{
             fontSize: 14,
             fontWeight: 600,
-            color: "#0f172a",
+            color: "#e5e7eb",
           }}
         >
           {titleMap[group]}
@@ -1001,10 +1011,10 @@ function DetailCard({
           style={{
             padding: "4px 10px",
             borderRadius: 999,
-            border: "1px solid rgba(191,219,254,1)",
-            background: "rgba(239,246,255,1)",
+            border: "1px solid rgba(56,189,248,0.6)",
+            background: "rgba(15,23,42,0.96)",
             fontSize: 11,
-            color: "#1d4ed8",
+            color: "#38bdf8",
             display: "flex",
             alignItems: "center",
             gap: 4,
@@ -1014,11 +1024,10 @@ function DetailCard({
         </div>
       </div>
 
-      {/* metrics */}
       <div
         style={{
           fontSize: 11,
-          color: "#374151",
+          color: "#cbd5f5",
           display: "flex",
           flexDirection: "column",
           gap: 4,
@@ -1085,10 +1094,9 @@ function DetailCard({
         )}
       </div>
 
-      {/* VERIFY ON BASESCAN SECTION */}
       <div
         style={{
-          borderTop: "1px solid rgba(226,232,240,1)",
+          borderTop: "1px solid rgba(30,41,59,1)",
           paddingTop: 8,
           marginTop: 4,
           display: "flex",
@@ -1100,14 +1108,13 @@ function DetailCard({
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: "#0f172a",
+            color: "#e5e7eb",
             marginBottom: 2,
           }}
         >
           Verify on BaseScan
         </div>
 
-        {/* tx link (for all where available) */}
         {tx && (
           <a
             href={`https://basescan.org/tx/${tx}`}
@@ -1115,7 +1122,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#2563eb",
+              color: "#38bdf8",
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1126,7 +1133,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#6b7280",
+                color: "#9ca3af",
               }}
             >
               {shortAddr(tx)}
@@ -1135,7 +1142,6 @@ function DetailCard({
           </a>
         )}
 
-        {/* token link (holders, volume, smart, multi) */}
         {token && (
           <a
             href={`https://basescan.org/token/${token}?chain=base`}
@@ -1143,7 +1149,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#2563eb",
+              color: "#38bdf8",
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1154,7 +1160,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#6b7280",
+                color: "#9ca3af",
               }}
             >
               {shortAddr(token)}
@@ -1163,7 +1169,6 @@ function DetailCard({
           </a>
         )}
 
-        {/* wallet links where available */}
         {walletFrom && (
           <a
             href={`https://basescan.org/address/${walletFrom}`}
@@ -1171,7 +1176,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#2563eb",
+              color: "#38bdf8",
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1182,7 +1187,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#6b7280",
+                color: "#9ca3af",
               }}
             >
               {shortAddr(walletFrom)}
@@ -1198,7 +1203,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#2563eb",
+              color: "#38bdf8",
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1209,7 +1214,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#6b7280",
+                color: "#9ca3af",
               }}
             >
               {shortAddr(walletTo)}
@@ -1218,7 +1223,6 @@ function DetailCard({
           </a>
         )}
 
-        {/* taker wallet for volume / smart / multi */}
         {wallet && !walletFrom && !walletTo && (
           <a
             href={`https://basescan.org/address/${wallet}`}
@@ -1226,7 +1230,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#2563eb",
+              color: "#38bdf8",
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1237,7 +1241,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#6b7280",
+                color: "#9ca3af",
               }}
             >
               {shortAddr(wallet)}

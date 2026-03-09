@@ -17,12 +17,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'        # agar pnpm use kar rahe ho to
+          cache: 'npm'        
 
       - name: Install deps
-        run: |
-          corepack enable      # optional but recommended for pnpm
-          pnpm install
+        run: npm install
 
       - name: Run worker
         run: node scripts/signal-telegram-worker.mjs

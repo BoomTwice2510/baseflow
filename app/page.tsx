@@ -183,6 +183,10 @@ export default function HomePage() {
   const shortAddr = (addr?: string) =>
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : undefined;
 
+  const BASE_BLUE = "#0000ff"; // Base Blue
+  const BASE_BLUE_SOFT = "#3c8aff"; // cerulean accent[web:2]
+  const BASE_GRAY_TEXT = "#171923";
+
   return (
     <div
       style={{
@@ -190,9 +194,8 @@ export default function HomePage() {
         width: "100%",
         margin: 0,
         padding: "24px 0",
-        background:
-          "radial-gradient(circle at 0 0, #020617 0, #020617 40%, #000 100%)",
-        color: "#e5e7eb",
+        backgroundColor: "#ffffff",
+        color: BASE_GRAY_TEXT,
         display: "flex",
         justifyContent: "center",
       }}
@@ -205,14 +208,14 @@ export default function HomePage() {
           position: "relative",
         }}
       >
-        {/* dark blue aura */}
+        {/* blue aura but very light */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             pointerEvents: "none",
             background:
-              "radial-gradient(circle at 0% 0%, rgba(56,189,248,0.18), transparent 55%), radial-gradient(circle at 100% 100%, rgba(37,99,235,0.22), transparent 55%)",
+              "radial-gradient(circle at 0% 0%, rgba(0,0,255,0.08), transparent 55%), radial-gradient(circle at 100% 100%, rgba(60,138,255,0.08), transparent 55%)",
             opacity: 1,
             filter: "blur(55px)",
           }}
@@ -242,8 +245,8 @@ export default function HomePage() {
                       position: "absolute",
                       inset: -5,
                       borderRadius: "999px",
-                      border: "1px solid rgba(59,130,246,0.7)",
-                      boxShadow: "0 0 22px rgba(56,189,248,0.9)",
+                      border: `1px solid ${BASE_BLUE}`,
+                      boxShadow: `0 0 22px rgba(0,0,255,0.35)`,
                     }}
                   />
                   <div
@@ -252,9 +255,9 @@ export default function HomePage() {
                       height: "100%",
                       borderRadius: "999px",
                       overflow: "hidden",
-                      border: "1px solid rgba(30,64,175,0.8)",
+                      border: `1px solid ${BASE_BLUE}`,
                       background:
-                        "radial-gradient(circle at 30% 0%, #0f172a, #1e293b 70%)",
+                        "radial-gradient(circle at 30% 0%, #ffffff, #eef0f3 70%)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -287,21 +290,22 @@ export default function HomePage() {
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
-                      color: "#f9fafb",
+                      color: BASE_BLUE,
+                      fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Inter, sans-serif",
+                      textTransform: "lowercase",
                     }}
                   >
-                    BaseFlow 🟦
+                    baseflow 🟦
                     <span
                       style={{
                         fontSize: 10,
                         padding: "2px 6px",
                         borderRadius: 999,
-                        border: "1px solid rgba(59,130,246,.9)",
-                        background:
-                          "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(37,99,235,0.9))",
+                        border: `1px solid ${BASE_BLUE}`,
+                        background: "rgba(0,0,255,0.06)",
                         textTransform: "uppercase",
                         letterSpacing: 0.6,
-                        color: "#e5f2ff",
+                        color: BASE_BLUE,
                       }}
                     >
                       signal
@@ -314,7 +318,7 @@ export default function HomePage() {
                       flexDirection: "column",
                       gap: 1,
                       fontSize: 10,
-                      color: "#9ca3af",
+                      color: "#4a5568",
                     }}
                   >
                     <span>
@@ -325,7 +329,7 @@ export default function HomePage() {
                       href="https://www.8004scan.io/agents/base/2387"
                       target="_blank"
                       style={{
-                        color: "#38bdf8",
+                        color: BASE_BLUE,
                         textDecoration: "none",
                       }}
                     >
@@ -336,7 +340,7 @@ export default function HomePage() {
                   <span
                     style={{
                       fontSize: 11,
-                      color: "#6b7280",
+                      color: "#718096",
                       marginTop: 2,
                     }}
                   >
@@ -354,17 +358,15 @@ export default function HomePage() {
                   fontSize: 11,
                   padding: "6px 13px",
                   borderRadius: 999,
-                  border: "1px solid rgba(56,189,248,0.9)",
-                  background: autoRefresh
-                    ? "linear-gradient(135deg, rgba(8,47,73,0.9), rgba(8,47,73,0.9))"
-                    : "rgba(15,23,42,0.9)",
-                  color: autoRefresh ? "#e0f2fe" : "#cbd5f5",
+                  border: `1px solid ${BASE_BLUE}`,
+                  backgroundColor: autoRefresh ? BASE_BLUE : "#ffffff",
+                  color: autoRefresh ? "#ffffff" : BASE_BLUE,
                   cursor: "pointer",
                   boxShadow: autoRefresh
-                    ? "0 0 20px rgba(56,189,248,0.9)"
+                    ? "0 0 16px rgba(0,0,255,0.4)"
                     : "0 0 0 rgba(0,0,0,0)",
                   transition:
-                    "background 0.16s ease, box-shadow 0.16s ease, transform 0.1s ease, border-color 0.16s ease",
+                    "background 0.16s ease, box-shadow 0.16s ease, transform 0.1s ease, border-color 0.16s ease, color 0.16s ease",
                   transform: autoRefresh ? "translateY(-1px)" : "none",
                 }}
               >
@@ -373,9 +375,9 @@ export default function HomePage() {
                     width: 8,
                     height: 8,
                     borderRadius: "999px",
-                    backgroundColor: autoRefresh ? "#22c55e" : "#64748b",
+                    backgroundColor: autoRefresh ? "#16a34a" : "#cbd5e0",
                     boxShadow: autoRefresh
-                      ? "0 0 10px rgba(34,197,94,0.9)"
+                      ? "0 0 8px rgba(22,163,74,0.7)"
                       : "none",
                   }}
                 />
@@ -390,13 +392,13 @@ export default function HomePage() {
                 display: "flex",
                 flexDirection: "column",
                 gap: 2,
-                color: "#9ca3af",
+                color: "#4a5568",
               }}
             >
               <span>
                 Network: <strong>Base</strong> · Segments: <strong>5</strong>
               </span>
-              <span style={{ color: "#6b7280" }}>
+              <span style={{ color: "#a0aec0" }}>
                 signal: {lastUpdated || "–"}
               </span>
             </div>
@@ -408,9 +410,9 @@ export default function HomePage() {
               marginBottom: 12,
               padding: 4,
               borderRadius: 999,
-              background: "rgba(15,23,42,0.95)",
-              border: "1px solid rgba(30,64,175,0.9)",
-              boxShadow: "0 12px 36px rgba(0,0,0,0.9)",
+              background: "rgba(255,255,255,0.9)",
+              border: `1px solid ${BASE_BLUE}`,
+              boxShadow: "0 8px 24px rgba(15,23,42,0.06)",
               backdropFilter: "blur(18px)",
             }}
           >
@@ -432,16 +434,14 @@ export default function HomePage() {
                       padding: "6px 4px",
                       borderRadius: 999,
                       border: "none",
-                      background: isActive
-                        ? "linear-gradient(135deg,#38bdf8,#2563eb)"
-                        : "transparent",
+                      background: isActive ? BASE_BLUE : "transparent",
                       fontSize: 10,
-                      color: isActive ? "#e5f2ff" : "#cbd5f5",
+                      color: isActive ? "#ffffff" : BASE_BLUE,
                       cursor: "pointer",
                       whiteSpace: "nowrap",
                       transform: isActive ? "translateY(-1px)" : "none",
                       boxShadow: isActive
-                        ? "0 8px 20px rgba(37,99,235,0.9)"
+                        ? "0 8px 18px rgba(0,0,255,0.35)"
                         : "none",
                       transition:
                         "background 0.16s ease, color 0.16s ease, transform 0.1s ease, box-shadow 0.16s ease",
@@ -465,14 +465,14 @@ export default function HomePage() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      color: "#9ca3af",
+                      color: "#4a5568",
                     }}
                   >
                     <div>{g.desc}</div>
                     <div
                       style={{
                         fontSize: 10,
-                        color: "#38bdf8",
+                        color: BASE_BLUE,
                       }}
                     >
                       Raw: {counts[g.key] || 0} · Shown:{" "}
@@ -492,7 +492,7 @@ export default function HomePage() {
                 alignItems: "center",
                 gap: 8,
                 marginBottom: 16,
-                color: "#e5e7eb",
+                color: BASE_GRAY_TEXT,
               }}
             >
               <span
@@ -500,8 +500,8 @@ export default function HomePage() {
                   width: 12,
                   height: 12,
                   borderRadius: "999px",
-                  border: "2px solid rgba(75,85,99,0.7)",
-                  borderTopColor: "#38bdf8",
+                  border: "2px solid rgba(148,163,184,0.7)",
+                  borderTopColor: BASE_BLUE,
                   animation: "spin 0.8s linear infinite",
                 }}
               />
@@ -512,7 +512,7 @@ export default function HomePage() {
               style={{
                 fontSize: 12,
                 marginBottom: 16,
-                color: "#6b7280",
+                color: "#a0aec0",
               }}
             >
               No recent signals in this segment.
@@ -585,10 +585,10 @@ export default function HomePage() {
                       style={{
                         borderRadius: 18,
                         padding: 12,
-                        background: "rgba(15,23,42,0.96)",
-                        border: "1px solid rgba(56,189,248,0.35)",
+                        background: "rgba(255,255,255,0.9)",
+                        border: `1px solid rgba(0,0,255,0.2)`,
                         boxShadow:
-                          "0 18px 40px rgba(0,0,0,0.95)",
+                          "0 18px 40px rgba(15,23,42,0.08)",
                         backdropFilter: "blur(18px)",
                         transform: "translateY(0) scale(1)",
                         transition:
@@ -599,17 +599,16 @@ export default function HomePage() {
                         el.style.transform =
                           "translateY(-3px) scale(1.01)";
                         el.style.boxShadow =
-                          "0 22px 52px rgba(15,23,42,1)";
-                        el.style.borderColor =
-                          "rgba(59,130,246,0.9)";
+                          "0 22px 52px rgba(15,23,42,0.12)";
+                        el.style.borderColor = BASE_BLUE;
                       }}
                       onMouseLeave={(e) => {
                         const el = e.currentTarget as HTMLDivElement;
                         el.style.transform = "translateY(0) scale(1)";
                         el.style.boxShadow =
-                          "0 18px 40px rgba(0,0,0,0.95)";
+                          "0 18px 40px rgba(15,23,42,0.08)";
                         el.style.borderColor =
-                          "rgba(56,189,248,0.35)";
+                          "rgba(0,0,255,0.2)";
                       }}
                     >
                       <div
@@ -626,7 +625,7 @@ export default function HomePage() {
                             alignItems: "center",
                             gap: 8,
                             fontSize: 12,
-                            color: "#e5e7eb",
+                            color: BASE_GRAY_TEXT,
                           }}
                         >
                           <span
@@ -638,9 +637,9 @@ export default function HomePage() {
                               alignItems: "center",
                               justifyContent: "center",
                               background:
-                                "radial-gradient(circle at 40% 0%, #1e293b, #020617)",
+                                "radial-gradient(circle at 40% 0%, #ffffff, #eef0f3)",
                               border:
-                                "1px solid rgba(56,189,248,0.6)",
+                                "1px solid rgba(0,0,255,0.4)",
                             }}
                           >
                             {activeGroup === "whales" && "🐋"}
@@ -661,7 +660,7 @@ export default function HomePage() {
                               <span
                                 style={{
                                   fontSize: 11,
-                                  color: "#9ca3af",
+                                  color: "#4a5568",
                                 }}
                               >
                                 {subtitle}
@@ -670,20 +669,21 @@ export default function HomePage() {
                           </div>
                         </div>
 
-                        {/* animated fire score pill */}
+                        {/* score pill in blue/red but flat */}
                         <div
                           style={{
                             position: "relative",
                             padding: "4px 10px",
                             borderRadius: 999,
                             background:
-                              "linear-gradient(135deg, #7f1d1d, #b91c1c)",
+                              "linear-gradient(135deg, #271de1, #40c3ef)",
                             display: "flex",
                             alignItems: "center",
                             gap: 4,
                             boxShadow:
-                              "0 0 14px rgba(248,113,113,0.7)",
+                              "0 0 10px rgba(83, 52, 237, 0.5)",
                             overflow: "hidden",
+                            color: "#fff",
                           }}
                         >
                           <div
@@ -691,7 +691,7 @@ export default function HomePage() {
                               position: "absolute",
                               inset: 0,
                               background:
-                                "radial-gradient(circle at 0 0, rgba(248,113,113,0.7), transparent 55%)",
+                                "radial-gradient(circle at 0 0, rgba(38, 42, 236, 0.95), transparent 55%)",
                               animation:
                                 "pulseFire 1.6s ease-in-out infinite",
                               pointerEvents: "none",
@@ -710,7 +710,6 @@ export default function HomePage() {
                               position: "relative",
                               fontSize: 11,
                               fontWeight: 600,
-                              color: "#fee2e2",
                             }}
                           >
                             {score.toFixed(1)}
@@ -722,7 +721,7 @@ export default function HomePage() {
                       <div
                         style={{
                           fontSize: 11,
-                          color: "#cbd5f5",
+                          color: "#1a202c",
                         }}
                       >
                         {primaryToken && (
@@ -773,7 +772,7 @@ export default function HomePage() {
                           <div
                             style={{
                               marginTop: 4,
-                              color: "#38bdf8",
+                              color: BASE_BLUE,
                               fontSize: 11,
                             }}
                           >
@@ -786,7 +785,7 @@ export default function HomePage() {
                         <div
                           style={{
                             fontSize: 10,
-                            color: "#6b7280",
+                            color: "#a0aec0",
                             marginTop: 6,
                           }}
                         >
@@ -807,11 +806,11 @@ export default function HomePage() {
               borderRadius: 16,
               padding: 10,
               marginBottom: 4,
-              background: "rgba(15,23,42,0.96)",
-              border: "1px solid rgba(30,64,175,0.9)",
-              boxShadow: "0 12px 36px rgba(0,0,0,0.9)",
+              background: "rgba(255,255,255,0.95)",
+              border: `1px solid ${BASE_BLUE}`,
+              boxShadow: "0 12px 32px rgba(15,23,42,0.06)",
               backdropFilter: "blur(18px)",
-              color: "#e5e7eb",
+              color: BASE_GRAY_TEXT,
             }}
           >
             <div
@@ -829,7 +828,7 @@ export default function HomePage() {
                     (signal?.meta?.counts?.holders || 0) +
                       (signal?.meta?.counts?.whales || 0) >
                     0
-                      ? "#22c55e"
+                      ? "#16a34a"
                       : "#f97316",
                 }}
               >
@@ -853,15 +852,15 @@ export default function HomePage() {
                   style={{
                     padding: "3px 8px",
                     borderRadius: 999,
-                    border: "1px solid rgba(30,64,175,0.9)",
+                    border: `1px solid rgba(0,0,255,0.25)`,
                     background:
                       (counts[g.key] || 0) > 0
-                        ? "rgba(15,23,42,0.9)"
-                        : "rgba(15,23,42,0.7)",
+                        ? "rgba(0,0,255,0.05)"
+                        : "rgba(255,255,255,0.9)",
                     color:
                       (counts[g.key] || 0) > 0
-                        ? "#38bdf8"
-                        : "#6b7280",
+                        ? BASE_BLUE
+                        : "#a0aec0",
                     fontSize: 10,
                   }}
                 >
@@ -879,7 +878,7 @@ export default function HomePage() {
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(15,23,42,0.5)",
+              background: "rgba(15,23,42,0.35)",
               backdropFilter: "blur(8px)",
               display: "flex",
               justifyContent: "center",
@@ -894,9 +893,9 @@ export default function HomePage() {
                 maxWidth: 520,
                 borderTopLeftRadius: 24,
                 borderTopRightRadius: 24,
-                background: "rgba(15,23,42,0.98)",
-                border: "1px solid rgba(56,189,248,0.4)",
-                boxShadow: "0 -12px 40px rgba(0,0,0,0.9)",
+                background: "#ffffff",
+                border: `1px solid rgba(0,0,255,0.35)`,
+                boxShadow: "0 -12px 40px rgba(15,23,42,0.16)",
                 padding: 16,
                 maxHeight: "70vh",
                 overflowY: "auto",
@@ -988,8 +987,15 @@ function DetailCard({
   const whales =
     s.whales || s.meta?.whale_wallets || 0;
 
+  const BASE_BLUE = "#0000ff";
+
   return (
-    <div>
+    <div
+      style={{
+        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Inter, sans-serif",
+        color: "#1a202c",
+      }}
+    >
       <div
         style={{
           display: "flex",
@@ -1002,7 +1008,6 @@ function DetailCard({
           style={{
             fontSize: 14,
             fontWeight: 600,
-            color: "#e5e7eb",
           }}
         >
           {titleMap[group]}
@@ -1011,10 +1016,10 @@ function DetailCard({
           style={{
             padding: "4px 10px",
             borderRadius: 999,
-            border: "1px solid rgba(56,189,248,0.6)",
-            background: "rgba(15,23,42,0.96)",
+            border: `1px solid ${BASE_BLUE}`,
+            background: "rgba(0,0,255,0.06)",
             fontSize: 11,
-            color: "#38bdf8",
+            color: BASE_BLUE,
             display: "flex",
             alignItems: "center",
             gap: 4,
@@ -1027,7 +1032,7 @@ function DetailCard({
       <div
         style={{
           fontSize: 11,
-          color: "#cbd5f5",
+          color: "#2d3748",
           display: "flex",
           flexDirection: "column",
           gap: 4,
@@ -1096,7 +1101,7 @@ function DetailCard({
 
       <div
         style={{
-          borderTop: "1px solid rgba(30,41,59,1)",
+          borderTop: "1px solid #e2e8f0",
           paddingTop: 8,
           marginTop: 4,
           display: "flex",
@@ -1108,8 +1113,6 @@ function DetailCard({
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: "#e5e7eb",
-            marginBottom: 2,
           }}
         >
           Verify on BaseScan
@@ -1122,7 +1125,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#38bdf8",
+              color: BASE_BLUE,
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1133,7 +1136,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#9ca3af",
+                color: "#718096",
               }}
             >
               {shortAddr(tx)}
@@ -1149,7 +1152,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#38bdf8",
+              color: BASE_BLUE,
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1160,7 +1163,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#9ca3af",
+                color: "#718096",
               }}
             >
               {shortAddr(token)}
@@ -1176,7 +1179,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#38bdf8",
+              color: BASE_BLUE,
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1187,7 +1190,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#9ca3af",
+                color: "#718096",
               }}
             >
               {shortAddr(walletFrom)}
@@ -1203,7 +1206,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#38bdf8",
+              color: BASE_BLUE,
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1214,7 +1217,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#9ca3af",
+                color: "#718096",
               }}
             >
               {shortAddr(walletTo)}
@@ -1230,7 +1233,7 @@ function DetailCard({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: "#38bdf8",
+              color: BASE_BLUE,
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -1241,7 +1244,7 @@ function DetailCard({
             <span
               style={{
                 fontFamily: "monospace",
-                color: "#9ca3af",
+                color: "#718096",
               }}
             >
               {shortAddr(wallet)}

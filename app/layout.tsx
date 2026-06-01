@@ -26,7 +26,10 @@ export const metadata: Metadata = {
       '{"version":"1","imageUrl":"https://baseflo.vercel.app/hero.png","button":{"title":"Open Agent","action":{"type":"launch_miniapp"}}}',
 
     "fc:frame":
-      '{"version":"1","imageUrl":"https://baseflo.vercel.app/hero.png","button":{"title":"Open Agent","action":{"type":"launch_frame"}}}'
+      '{"version":"1","imageUrl":"https://baseflo.vercel.app/hero.png","button":{"title":"Open Agent","action":{"type":"launch_frame"}}}',
+
+    "talentapp:project_verification":
+      "8ddb5dbd35fa2d5dd40c260fe06067cdd6f3879177e23ad3824d9e23dbe67ed4bc00c10b8f77d4d78896c3e66319442a1f339fac962ae08e306d8bca77a35d8c"
   }
 };
 
